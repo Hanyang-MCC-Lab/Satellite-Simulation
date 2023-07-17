@@ -220,6 +220,11 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# jetbrain
 .idea
+
+# vpython cache
+http_cache.sqlite
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos
