@@ -7,8 +7,6 @@ import math
 #상수선언
 CONST_EARTH_RADIUS = 6371 #지구반경
 CONST_SAT_RADIUS = CONST_EARTH_RADIUS + 550 #지구반경 + 550KM
-CONST_ORBIT_NUM = 72 #궤도개수
-CONST_SAT_NUM = 22 #위성개수
 
 #모니터 해상도에 따라 유동적인 해상도 조절
 root = Tk()
