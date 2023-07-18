@@ -10,6 +10,7 @@ CONST_EARTH_RADIUS = 6371 #지구반경
 CONST_SAT_RADIUS = CONST_EARTH_RADIUS + 550 #지구반경 + 550KM
 CONST_ORBIT_NUM = 72 #궤도개수
 CONST_SAT_NUM = 22 #위성개수
+CONST_ROT = 0.16 #궤도회전각도 라디안
 
 #모니터 해상도에 따라 유동적인 해상도 조절
 root = Tk()
@@ -24,14 +25,21 @@ inclination = math.radians(float(input("Please input Orbit Inclination radian.\n
 scene = canvas(width = monitor_width-15, height = monitor_height-15)
 scene.resizable = False
 box()
+
+# xy평면과 x, y, z축
+mybox = box(pos=vec(0, 0, 0), length=30000, height=1, width=30000, opacity=0.5)
+lineX = arrow(pos=vector(-15000, 0, 0), axis=vector(1, 0, 0), shaftwidth=50, headwidth=300, headlength=300, length=30000, color=color.magenta)
+lineY = arrow(pos=vector(0, 0, -15000), axis=vector(0, 0, 1), shaftwidth=50, headwidth=300, headlength=300, length=30000, color=color.blue)
+lineZ = arrow(pos=vector(0, -10000, 0), axis=vector(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000, color=color.green)
+
 #궤도 및 위성 리스트 생성
 orbit = []
 sat = []
 
 earth = sphere(pos=vec(1, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth) #지구생성
 
-orbit1 = ring(pos=vec(0, 0, 0), axis=vec(math.cos(math.sin(0))-math.sin(math.sin(inclination)), math.cos(inclination), math.sin(math.sin(0))+math.cos(math.sin(inclination))), radius=CONST_SAT_RADIUS, color=color.red, thickness=15)
-orbit2 = ring(pos=vec(0, 0, 0), axis=vec(0, math.cos(inclination), math.sin(inclination)), radius=CONST_SAT_RADIUS, color=color.cyan, thickness=15)
-#orbit3 = ring(pos=vec(0, 0, 0), axis=vec(math.sin(0.16), math.cos(inclination), math.sin(inclination)+math.sin(0.16)), radius=CONST_SAT_RADIUS, color=color.white, thickness=15)
+for i in range(CONST_SAT_NUM) :
+    orbit.append( ring(pos=vec(0, 0, 0), axis=vec(math.cos(CONST_ROT*i)*0-math.sin(CONST_ROT*i)*math.sin(inclination), math.cos(inclination), math.sin(CONST_ROT*i)*0+math.cos(CONST_ROT*i)*math.sin(inclination)), radius=CONST_SAT_RADIUS, color=color.red, thickness=15) )
+
     #for j in range(CONST_SAT_NUM): #위성생성
         #sat[j] = sphere(pos=vec(CONST_SAT_RADIUS, 0, 0), axis=vec(0, math.cos(inclination / 180), math.sin(inclination / 180)), radius=30, color=color.white)
