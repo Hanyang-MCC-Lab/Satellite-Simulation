@@ -39,7 +39,18 @@ t1 = text(pos=vec(-15000, 500, 0), text = "Vernal equinox", billboard = True, co
 
 earth = sphere(pos=vec(1, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth) #지구생성
 
-for i in range(CONST_ORBIT_NUM) :
-    orbit.append(ring(pos=vec(0, 0, 0), axis=vec(math.cos(CONST_ORBIT_ROT * i) * 0 - math.sin(CONST_ORBIT_ROT * i) * math.sin(inclination), math.cos(inclination), math.sin(CONST_ORBIT_ROT * i) * 0 + math.cos(CONST_ORBIT_ROT * i) * math.sin(inclination)), radius=CONST_SAT_RADIUS, color=color.red, thickness=15))
+#이중for문을 통하여 궤도 및 위성 배치
+for i in range(CONST_ORBIT_NUM) : #궤도생성
+    orbit.append(ring(pos=vec(0, 0, 0),
+                      #궤도 축 회전
+                      axis=vec(math.cos(CONST_ORBIT_ROT * i) * 0 - math.sin(CONST_ORBIT_ROT * i) * math.sin(inclination),
+                               math.cos(inclination),
+                               math.sin(CONST_ORBIT_ROT * i) * 0 + math.cos(CONST_ORBIT_ROT * i) * math.sin(inclination)),
+                      radius=CONST_SAT_RADIUS, color=color.red, thickness=15))
+
     for j in range(CONST_SAT_NUM): #위성생성
-        sat.append(sphere(pos=vec(CONST_SAT_RADIUS * math.cos(CONST_SAT_ROT * j), 0 - math.sin(inclination) * (CONST_SAT_RADIUS * math.sin(CONST_SAT_ROT * j)), math.cos(inclination) * (CONST_SAT_RADIUS * math.sin(CONST_SAT_ROT * j))), axis=vec(1, 0, 0), radius=60, color=color.white))
+                            #궤도경사 회전 및 궤도 축 회전
+        sat.append(sphere(pos=vec(CONST_SAT_RADIUS * math.cos(CONST_SAT_ROT * j),
+                                  0 - math.sin(inclination) * (CONST_SAT_RADIUS * math.sin(CONST_SAT_ROT * j)),
+                                  math.cos(inclination) * (CONST_SAT_RADIUS * math.sin(CONST_SAT_ROT * j))),
+                          axis=vec(1, 0, 0), radius=60, color=color.white))
