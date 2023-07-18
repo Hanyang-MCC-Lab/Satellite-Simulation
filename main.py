@@ -54,3 +54,7 @@ for i in range(CONST_ORBIT_NUM) : #궤도생성
                                   0 - math.sin(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_SAT_RADIUS,
                                   math.sin(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_SAT_RADIUS + math.cos(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_SAT_RADIUS),
                           axis=vec(1, 0, 0), radius=60, color=color.white))
+
+print("\nSatelites : ", sat) #위성목록
+print("\nTotal Sat num : ", CONST_ORBIT_NUM * CONST_SAT_NUM) #위성개수
+print("\nSat_2 : ", sat[2].pos) #ECEF위성좌표
