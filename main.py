@@ -8,10 +8,10 @@ import math
 #상수선언
 CONST_EARTH_RADIUS = 6371 #지구반경
 CONST_SAT_RADIUS = CONST_EARTH_RADIUS + 550 #지구반경 + 550KM
-CONST_ORBIT_NUM = 72 #궤도개수
+CONST_ORBIT_NUM = 72#궤도개수
 CONST_SAT_NUM = 22 #위성개수
-CONST_ORBIT_ROT = 0.087 #궤도회전각도 라디안 5도
-CONST_SAT_ROT = 0.285 #위성회전각도 라디안 16.3도
+CONST_ORBIT_ROT = 0.0873 #궤도회전각도 라디안 5도
+CONST_SAT_ROT = 0.2855 #위성회전각도 라디안 16.3도
 
 #궤도 및 위성 리스트 생성
 orbit = []
@@ -30,7 +30,7 @@ inclination = math.radians(float(input("Please input Orbit Inclination radian.\n
 scene = canvas(width = monitor_width-15, height = monitor_height-15)
 scene.resizable = False
 
-# xy평면과 x, y, z축
+# xy평면과 x, y, z축 pos=vec(y방향, z방향, x방향) ㅋㅋ
 mybox = box(pos=vec(0, 0, 0), length=30000, height=1, width=30000, opacity=0.5)
 lineX = arrow(pos=vec(-15000, 0, 0), axis=vec(1, 0, 0), shaftwidth=50, headwidth=300, headlength=300, length=30000, color=color.magenta)
 lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth=300, headlength=300, length=30000, color=color.blue)
