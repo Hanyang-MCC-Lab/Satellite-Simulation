@@ -1,6 +1,5 @@
 import math
 from vpython import *
-from operator import mul
 
 
 class Satellite:
@@ -15,20 +14,19 @@ class Satellite:
     # ECEF 좌표계상의 x, y, z좌표
     x, y, z = 0, 0, 0
 
-    def __init__(self, orbit, sat_index, inclination, omega):
-        self.id = self.id + sat_index
+    def __init__(self, orbit, sat_index, inclination, theta):
+        self.id = self.id + str(sat_index)
         self.orbit = orbit
         # 위도, 경도
-        self.latitude = math.asin(math.sin(inclination) * math.sin(omega))
-        self.longitude = math.atan2(
-            math.cos(inclination) * math.sin(omega) * math.cos(omega) + 360) % 360 + orbit.ascend_lon
+        self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
+        self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta), math.cos(theta)) + 360) % 360 + orbit.lon_of_ascending
         # ECEF 좌표
         self.x = math.cos(self.latitude) * math.cos(self.longitude) * self.altitude
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * self.altitude
         self.z = math.sin(self.latitude) * self.altitude
         # 구체 attribute 설정
+        self.sat_attr.axis = vec(0, 0, 1)  # 바라보는 방향이라는데 정확한 의미는 모름
         self.sat_attr.pos = vec(self.y, self.z, self.x)
-        self.sat_attr.axis = vec(1, 0, 0)  # 바라보는 방향이라는데 정확한 의미는 모름
         self.sat_attr.radius = 60
         self.sat_attr.color = color.white
 
