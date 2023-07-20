@@ -6,11 +6,11 @@ import math
 
 # 상수선언
 CONST_EARTH_RADIUS = 6371  # 지구반경
-CONST_SAT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
+CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
 CONST_ORBIT_NUM = 72  # 궤도개수
 CONST_SAT_NUM = 22  # 위성개수
-CONST_ORBIT_ROT = 0.0873  # 궤도회전각도 라디안 5도
-CONST_SAT_ROT = 0.2855  # 위성회전각도 라디안 16.3도
+CONST_ORBIT_ROT = math.radians(360 / CONST_ORBIT_NUM)  # 궤도회전각도
+CONST_SAT_ROT = math.radians(360 / CONST_SAT_NUM)  # 위성회전각도
 
 
 class Orbit:
@@ -31,11 +31,9 @@ class Orbit:
         self.lon_of_ascending = lon_of_ascending
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
         self.orbit_attr = ring(pos=vec(0, 0, 0),
-                               axis=vec(math.sin(lon_of_ascending) * 0 + math.cos(lon_of_ascending) * math.sin(
-                                   -1 * inclination),
+                               axis=vec(math.sin(lon_of_ascending) * 0 + math.cos(lon_of_ascending) * math.sin(-1 * inclination),
                                         math.cos(-1 * inclination),
-                                        math.cos(lon_of_ascending) * 0 - math.sin(lon_of_ascending) * math.sin(
-                                            -1 * inclination)),
+                                        math.cos(lon_of_ascending) * 0 - math.sin(lon_of_ascending) * math.sin(-1 * inclination)),
                                color=color.red, thickness=15, radius=self.semi_major_axis)
         # 위성 배치
         for idx in range(CONST_SAT_NUM):
@@ -44,7 +42,7 @@ class Orbit:
             # 아래 코드 주석 해제하면 각 위성이 가진 ECEF, LLH좌표 확인가능
             print(sat.get_llh_info())
             print(sat.get_ecef_info())
-            sleep(0.1)
+            sleep(0.005)
 
     def get_orbit_info(self):
         info = {
@@ -73,7 +71,7 @@ class Satellite:
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
-                                     math.cos(theta)) + 6.2832) % 6.2832 + orbit.lon_of_ascending
+                          math.cos(theta)) + 6.2832) % 6.2832 + orbit.lon_of_ascending
         # ECEF 좌표
         self.x = math.cos(self.latitude) * math.cos(self.longitude) * (6371 + self.altitude)
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (6371 + self.altitude)
@@ -83,7 +81,8 @@ class Satellite:
 
     # 위성의 LLH를 GET하는 메소드, 다만 라디안으로 저장되어 있어 일반 degree로 변환이 필요함(지금은 안되어 있음)
     def get_llh_info(self):
-        info = {
+        info = { "ORBIT-ID": self.orbit.id,
+            "SAT-ID" : self.id,
             "lon": math.degrees(self.longitude),
             "lat": math.degrees(self.latitude),
             "alt": self.altitude
@@ -111,8 +110,6 @@ root = Tk()
 monitor_height = root.winfo_screenheight()
 monitor_width = root.winfo_screenwidth()
 
-# 케플러 요소 입력
-
 # 씬 구성
 # 기준 춘분점(Reference direction vector = (0, 0, 1))
 scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
@@ -130,6 +127,8 @@ t1 = text(pos=vec(-15000, 500, 0), text="Vernal equinox", align='center', billbo
           emissive=True)
 
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
+
+# 케플러 요소 입력
 inclination = math.radians(float(input("Please input Orbit Inclination radian.\n Orbit Inclination : ")))  # 궤도경사
 
 # 이중for문을 통하여 궤도 및 위성 배치
@@ -141,11 +140,11 @@ for i in range(CONST_ORBIT_NUM):  # 궤도생성
     #                   axis=vec(math.cos(CONST_ORBIT_ROT * i) * 0 - math.sin(CONST_ORBIT_ROT * i) * math.sin(inclination),
     #                            math.cos(inclination),
     #                            math.sin(CONST_ORBIT_ROT * i) * 0 + math.cos(CONST_ORBIT_ROT * i) * math.sin(inclination)),
-    #                   radius=CONST_SAT_RADIUS, color=color.red, thickness=15))
+    #                   radius=CONST_ORBIT_RADIUS, color=color.red, thickness=15))
     #
     # for j in range(CONST_SAT_NUM): #위성생성
     #                         #궤도경사 회전 및 궤도 축 회전 및 궤도회전
-    #     sat.append(sphere(pos=vec(math.cos(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_SAT_RADIUS - math.sin(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_SAT_RADIUS,
-    #                               0 - math.sin(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_SAT_RADIUS,
-    #                               math.sin(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_SAT_RADIUS + math.cos(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_SAT_RADIUS),
+    #     sat.append(sphere(pos=vec(math.cos(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS - math.sin(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS,
+    #                               0 - math.sin(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS,
+    #                               math.sin(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS + math.cos(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS),
     #                       axis=vec(1, 0, 0), radius=60, color=color.white))
