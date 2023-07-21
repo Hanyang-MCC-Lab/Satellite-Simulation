@@ -132,8 +132,12 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis):
-    for i in range(CONST_ORBIT_NUM):  # 궤도생성
-        orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i))
+    if int(math.degrees(inc)) is 90:
+        for i in range(int(CONST_ORBIT_NUM / 2)):  # 궤도생성
+            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i))
+    else:
+        for i in range(CONST_ORBIT_NUM):  # 궤도생성
+            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i))
 
     # orbit.append(ring(pos=vec(0, 0, 0),
     #                   #궤도경사 회전 및 궤도 축 회전
