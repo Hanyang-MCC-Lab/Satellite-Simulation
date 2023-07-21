@@ -1,7 +1,7 @@
 'Python 3.7'
 'Web VPython 3.2'
 from vpython import *
-from tkinter import *
+from tkinter import * # 해상도 적응모듈
 import math
 
 # 상수선언
@@ -107,7 +107,7 @@ class Satellite:
 orbits = []
 sat = []
 
-# 모니터 해상도에 따라 유동적인 해상도 조절
+# 모니터 해상도에 따라 능동적인 해상도 조절
 root = Tk()
 monitor_height = root.winfo_screenheight()
 monitor_width = root.winfo_screenwidth()
@@ -125,9 +125,8 @@ lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth
               color=color.blue)
 lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
               color=color.green)
-t1 = text(pos=vec(-15000, 500, 0), text="Vernal equinox", align='center', billboard=True, color=color.cyan,
-          emissive=True)
-
+t3 = text(text='Vernal equinox', pos=vec(0,500,15000), align='center', height=500,
+          color=color.cyan, billboard=True, emissive=True)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -139,6 +138,7 @@ def deploy(inc, axis):
         for i in range(CONST_ORBIT_NUM):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i))
 
+    # 계산로직
     # orbit.append(ring(pos=vec(0, 0, 0),
     #                   #궤도경사 회전 및 궤도 축 회전
     #                   axis=vec(math.cos(CONST_ORBIT_ROT * i) * 0 - math.sin(CONST_ORBIT_ROT * i) * math.sin(inclination),
