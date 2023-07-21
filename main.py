@@ -6,7 +6,7 @@ import math
 
 # 상수선언
 CONST_EARTH_RADIUS = 6371  # 지구반경
-CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
+#CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
 CONST_ORBIT_NUM = 72  # 궤도개수
 CONST_SAT_NUM = 22  # 위성개수
 CONST_ORBIT_ROT = math.radians(360 / CONST_ORBIT_NUM)  # 궤도회전각도
@@ -19,25 +19,26 @@ class Orbit:
     # 궤도가 가진 위성 객체 (22개)
     satellites = []
     # 궤도 요소
-    semi_major_axis = 6371 + 550  # km
+    semi_major_axis = 6371  # km
     inclination = 0
     lon_of_ascending = 0
     # 궤도 모형
     orbit_attr = None
 
-    def __init__(self, index, inclination, lon_of_ascending):
+    def __init__(self, index, inclination, altitude, lon_of_ascending):
         self.id = self.id + str(index)
         self.inclination = inclination
         self.lon_of_ascending = lon_of_ascending
+        self.semi_major_axis = CONST_EARTH_RADIUS
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
         self.orbit_attr = ring(pos=vec(0, 0, 0),
                                axis=vec(math.sin(lon_of_ascending) * 0 + math.cos(lon_of_ascending) * math.sin(-1 * inclination),
                                         math.cos(-1 * inclination),
                                         math.cos(lon_of_ascending) * 0 - math.sin(lon_of_ascending) * math.sin(-1 * inclination)),
-                               color=color.red, thickness=15, radius=self.semi_major_axis)
+                               color=color.red, thickness=15, radius=self.semi_major_axis + altitude)
         # 위성 배치
         for idx in range(CONST_SAT_NUM):
-            sat = Satellite(self, idx, inclination, idx * CONST_SAT_ROT)
+            sat = Satellite(self, idx, inclination, altitude, idx * CONST_SAT_ROT)
             self.satellites.append(sat)
             # 아래 코드 주석 해제하면 각 위성이 가진 ECEF, LLH좌표 확인가능
             print(sat.get_llh_info())
@@ -65,17 +66,18 @@ class Satellite:
     # ECEF 좌표계상의 x, y, z좌표
     x, y, z = 0, 0, 0
 
-    def __init__(self, orbit, sat_index, inclination, theta):
+    def __init__(self, orbit, sat_index, inclination, alt, theta):
         self.id = self.id + str(sat_index)
         self.orbit = orbit
+        self.altitude = alt
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
                           math.cos(theta)) + 6.2832) % 6.2832 + orbit.lon_of_ascending
         # ECEF 좌표
-        self.x = math.cos(self.latitude) * math.cos(self.longitude) * (6371 + self.altitude)
-        self.y = math.cos(self.latitude) * math.sin(self.longitude) * (6371 + self.altitude)
-        self.z = math.sin(self.latitude) * (6371 + self.altitude)
+        self.x = math.cos(self.latitude) * math.cos(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
+        self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
+        self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 설정
         self.sat_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
 
@@ -128,12 +130,10 @@ t1 = text(pos=vec(-15000, 500, 0), text="Vernal equinox", align='center', billbo
 
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 
-# 케플러 요소 입력
-inclination = math.radians(float(input("Please input Orbit Inclination radian.\n Orbit Inclination : ")))  # 궤도경사
-
-# 이중for문을 통하여 궤도 및 위성 배치
-for i in range(CONST_ORBIT_NUM):  # 궤도생성
-    orbits.append(Orbit(i, inclination, CONST_ORBIT_ROT * i))
+# 이중for문을 통하여 궤도 및 위성 배치 함수
+def deploy(inc, axis):
+    for i in range(CONST_ORBIT_NUM):  # 궤도생성
+        orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i))
 
     # orbit.append(ring(pos=vec(0, 0, 0),
     #                   #궤도경사 회전 및 궤도 축 회전
@@ -148,3 +148,10 @@ for i in range(CONST_ORBIT_NUM):  # 궤도생성
     #                               0 - math.sin(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS,
     #                               math.sin(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS + math.cos(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS),
     #                       axis=vec(1, 0, 0), radius=60, color=color.white))
+
+# 케플러 요소 입력
+while 1:
+    inclination = math.radians(float(input("Please input Orbit Inclination radian.\n Orbit Inclination : ")))  # 궤도경사
+    altitude = int(input("Please input Satellite Altitude.\n Altitude : ")) # 궤도 반지름
+    deploy(inclination, altitude)
+    print("\n")
