@@ -1,4 +1,6 @@
 'Python 3.7'
+import vpython
+
 'Web VPython 3.2'
 from vpython import *
 import pyautogui
@@ -12,7 +14,8 @@ CONST_SAT_NUM = 22  # 위성개수
 CONST_ORBIT_ROT = math.radians(360 / CONST_ORBIT_NUM)  # 궤도회전각도
 CONST_SAT_ROT = math.radians(360 / CONST_SAT_NUM)  # 위성회전각도
 CONST_SAT_DT = math.radians(1)  # 위성 공전 각도
-
+v = vpython.color()
+CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
 class Orbit:
     # 궤도 객체의 attribute
@@ -26,19 +29,19 @@ class Orbit:
     # 궤도 모형
     orbit_attr = None
 
-    def __init__(self, index, inclination, altitude, lon_of_ascending):
+    def __init__(self, index, inclination, altitude, lon_of_ascending, color):
         self.id = self.id + str(index)
         self.inclination = inclination
         self.lon_of_ascending = lon_of_ascending
         self.semi_major_axis = CONST_EARTH_RADIUS
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
-        self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.6,
+        self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.3,
                                axis=vec(math.sin(lon_of_ascending) * 0 + math.cos(lon_of_ascending) * math.sin(
                                    -1 * inclination),
                                         math.cos(-1 * inclination),
                                         math.cos(lon_of_ascending) * 0 - math.sin(lon_of_ascending) * math.sin(
                                             -1 * inclination)),
-                               color=color.red, thickness=15, radius=self.semi_major_axis + altitude, )
+                               color=color, thickness=15, radius=self.semi_major_axis + altitude, )
         # 위성 배치
         for idx in range(CONST_SAT_NUM):
             sat = Satellite(self, idx, inclination, altitude, idx * CONST_SAT_ROT)
@@ -148,13 +151,13 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
-def deploy(inc, axis):
+def deploy(inc, axis, color):
     if int(math.degrees(inc)) is 90:
         for i in range(int(CONST_ORBIT_NUM / 2)):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i))
+            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i, color))
     else:
         for i in range(CONST_ORBIT_NUM):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i))
+            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i, color))
 
     # 계산로직
     # orbit.append(ring(pos=vec(0, 0, 0),
@@ -173,14 +176,16 @@ def deploy(inc, axis):
 
 
 # 케플러 요소 입력
-r=0
+orbit_cnt = 0
 while True:
     inclination = math.radians(float(input("Please input Orbit Inclination radian.\n Orbit Inclination : ")))  # 궤도경사
     altitude = int(input("Please input Satellite Altitude.\n Altitude : "))  # 궤도 반지름
-    deploy(inclination, altitude)
+    deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
     more = input("More? (y/n)\n")
     if more == "n":
         break
+    else:
+        orbit_cnt = (orbit_cnt+1) % 4
 
 while True:
     for orbit in orbits:
