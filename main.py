@@ -1,7 +1,7 @@
 'Python 3.7'
 'Web VPython 3.2'
 from vpython import *
-from tkinter import *  # 해상도 적응모듈
+import pyautogui
 import math
 
 # 상수선언
@@ -108,8 +108,8 @@ class Satellite:
     def refresh(self, dt):
         self.true_anomaly = (self.true_anomaly+dt) % 360
         # 위도, 경도
-        self.latitude = math.asin(math.sin(inclination) * math.sin(self.true_anomaly))
-        self.longitude = (math.atan2(math.cos(inclination) * math.sin(self.true_anomaly),
+        self.latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly))
+        self.longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly),
                                      math.cos(self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending
         # ECEF 좌표
         self.x = math.cos(self.latitude) * math.cos(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
@@ -125,9 +125,9 @@ class Satellite:
 orbits = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
-root = Tk()
-monitor_height = root.winfo_screenheight()
-monitor_width = root.winfo_screenwidth()
+M_size = pyautogui.size()
+monitor_width = M_size[0]
+monitor_height = M_size[1]
 
 # 씬 구성
 # 기준 춘분점(Reference direction vector = (0, 0, 1))
@@ -173,11 +173,12 @@ def deploy(inc, axis):
 
 
 # 케플러 요소 입력
+r=0
 while True:
     inclination = math.radians(float(input("Please input Orbit Inclination radian.\n Orbit Inclination : ")))  # 궤도경사
     altitude = int(input("Please input Satellite Altitude.\n Altitude : "))  # 궤도 반지름
     deploy(inclination, altitude)
-    more = input("More? (y/n)")
+    more = input("More? (y/n)\n")
     if more == "n":
         break
 
@@ -185,5 +186,4 @@ while True:
     for orbit in orbits:
         for sat in orbit.satellites:
             sat.refresh(CONST_SAT_DT)
-    sleep(3)
-    print("\n")
+        sleep(1.5)
