@@ -7,12 +7,12 @@ import pyautogui
 import math
 
 # 상수선언
+orbitNum = 72
+satNum = 22
 CONST_EARTH_RADIUS = 6371  # 지구반경
 # CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
-CONST_ORBIT_NUM = 72  # 궤도개수
-CONST_SAT_NUM = 22  # 위성개수
-CONST_ORBIT_ROT = math.radians(360 / CONST_ORBIT_NUM)  # 궤도회전각도
-CONST_SAT_ROT = math.radians(360 / CONST_SAT_NUM)  # 위성회전각도
+orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
+satRot = math.radians(360 / satNum)  # 위성회전각도
 CONST_SAT_DT = math.radians(1)  # 위성 공전 각도
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
@@ -43,8 +43,8 @@ class Orbit:
                                             -1 * inclination)),
                                color=color, thickness=15, radius=self.semi_major_axis + altitude, )
         # 위성 배치
-        for idx in range(CONST_SAT_NUM):
-            sat = Satellite(self, idx, inclination, altitude, idx * CONST_SAT_ROT)
+        for idx in range(satNum):
+            sat = Satellite(self, idx, inclination, altitude, idx * satRot)
             self.satellites.append(sat)
             # 아래 코드 주석 해제하면 각 위성이 가진 ECEF, LLH좌표 확인가능
             # print(sat.get_llh_info())
@@ -130,7 +130,7 @@ orbits = []
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
 monitor_width = M_size[0]
-monitor_height = M_size[1]
+monitor_height = M_size[1] -100
 
 # 씬 구성
 # 기준 춘분점(Reference direction vector = (0, 0, 1))
@@ -149,46 +149,86 @@ t3 = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=
           color=color.cyan, billboard=True, emissive=True)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 
+#입력 GUI구성
+running = True
+setting = True
+scene.caption = "\nOrbital inclination / Altitude / Orbits Number / Satellites Number\n\n"
+def Inc(i):
+    return i.number
+def Alt(a):
+    return a.number
+def OrbNum(o):
+    return o.number
+def SatNum(s):
+    return s.number
+def Set(s):
+    global setting
+    setting = not setting
+    if setting:
+        s.text = "Set"
+    else:
+        s.text = "Setting"
+def Run(r):
+    global running
+    running = not running
+    if running:
+        r.text = "Run"
+    else:
+        r.text = "Runnning"
+
+n = winput( bind=Inc, width = 120, type = "numeric")
+i = winput( bind=Alt, width = 120, type = "numeric" )
+o = winput( bind=OrbNum, width = 120, type = "numeric" )
+s = winput( bind=SatNum, width = 120, type = "numeric" )
+button(text="Set", bind=Set)
+button(text="Run", bind=Run)
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     if int(math.degrees(inc)) is 90:
-        for i in range(int(CONST_ORBIT_NUM / 2)):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i, color))
+        for i in range(int(orbitNum / 2)):  # 궤도생성
+            orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     else:
-        for i in range(CONST_ORBIT_NUM):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, CONST_ORBIT_ROT * i, color))
+        for i in range(orbitNum):  # 궤도생성
+            orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
 
     # 계산로직
     # orbit.append(ring(pos=vec(0, 0, 0),
     #                   #궤도경사 회전 및 궤도 축 회전
-    #                   axis=vec(math.cos(CONST_ORBIT_ROT * i) * 0 - math.sin(CONST_ORBIT_ROT * i) * math.sin(inclination),
+    #                   axis=vec(math.cos(orbitRot * i) * 0 - math.sin(orbitRot * i) * math.sin(inclination),
     #                            math.cos(inclination),
-    #                            math.sin(CONST_ORBIT_ROT * i) * 0 + math.cos(CONST_ORBIT_ROT * i) * math.sin(inclination)),
+    #                            math.sin(orbitRot * i) * 0 + math.cos(orbitRot * i) * math.sin(inclination)),
     #                   radius=CONST_ORBIT_RADIUS, color=color.red, thickness=15))
     #
-    # for j in range(CONST_SAT_NUM): #위성생성
+    # for j in range(satNum): #위성생성
     #                         #궤도경사 회전 및 궤도 축 회전 및 궤도회전
-    #     sat.append(sphere(pos=vec(math.cos(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS - math.sin(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS,
-    #                               0 - math.sin(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS,
-    #                               math.sin(CONST_ORBIT_ROT * i) * math.cos(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS + math.cos(CONST_ORBIT_ROT * i) * math.cos(inclination) * math.sin(CONST_SAT_ROT * j) * CONST_ORBIT_RADIUS),
+    #     sat.append(sphere(pos=vec(math.cos(orbitRot * i) * math.cos(satRot * j) * CONST_ORBIT_RADIUS - math.sin(orbitRot * i) * math.cos(inclination) * math.sin(satRot * j) * CONST_ORBIT_RADIUS,
+    #                               0 - math.sin(inclination) * math.sin(satRot * j) * CONST_ORBIT_RADIUS,
+    #                               math.sin(orbitRot * i) * math.cos(satRot * j) * CONST_ORBIT_RADIUS + math.cos(orbitRot * i) * math.cos(inclination) * math.sin(satRot * j) * CONST_ORBIT_RADIUS),
     #                       axis=vec(1, 0, 0), radius=60, color=color.white))
 
 
-# 케플러 요소 입력
+# 메인
 orbit_cnt = 0
-while True:
-    inclination = math.radians(float(input("Please input Orbit Inclination radian.\n Orbit Inclination : ")))  # 궤도경사
-    altitude = int(input("Please input Satellite Altitude.\n Altitude : "))  # 궤도 반지름
-    deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
-    more = input("More? (y/n)\n")
-    if more == "n":
-        break
-    else:
+while 1:
+    while setting == False:
+        # 케플러요소 입력
+        print("Setting")
+        inclination = math.radians(float(Inc(n)))  # 궤도경사
+        altitude = int(Alt(i))  # 궤도 반지름
+        orbitNum = OrbNum(o)
+        satNum = SatNum(s)
+        orbitRot = math.radians(360 / orbitNum)
+        satRot = math.radians(360 / satNum)
+        deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
         orbit_cnt = (orbit_cnt+1) % 4
+        setting = not setting
 
-while True:
-    for orbit in orbits:
-        for sat in orbit.satellites:
-            sat.refresh(CONST_SAT_DT)
-        sleep(1.5)
+    while running == False:
+        print("Running")
+        for orbit in orbits:
+            for sat in orbit.satellites:
+                sat.refresh(CONST_SAT_DT)
+            sleep(1.5)
+            if running == True:
+                break
