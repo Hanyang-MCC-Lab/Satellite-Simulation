@@ -146,13 +146,13 @@ lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth
 lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
               color=color.green)
 t3 = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
-          color=color.cyan, billboard=True, emissive=True)
+          color=color.cyan, billboard=True, emissive=True, depth=0.15)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 
 #입력 GUI구성
 running = True
 setting = True
-scene.caption = "\nOrbital inclination / Altitude / Orbits Number / Satellites Number\n\n"
+scene.caption = "\nOrbital inclination/    Altitude      / Orbits Number /Satellites Number\n\n"
 def Inc(i):
     return i.number
 def Alt(a):
@@ -186,8 +186,8 @@ button(text="Run", bind=Run)
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     if int(math.degrees(inc)) is 90:
-        for i in range(int(orbitNum / 2)):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
+        for i in range(int(orbitNum)):  # 궤도생성
+            orbits.append(Orbit(i, inc, axis, orbitRot/2 * i, color))
     else:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
