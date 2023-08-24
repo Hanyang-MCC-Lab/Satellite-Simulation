@@ -17,11 +17,12 @@ CONST_SAT_DT = math.radians(1)  # 위성 공전 각도
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
+
 class Orbit:
     # 궤도 객체의 attribute
     id = "ORBIT-"
-    # 궤도가 가진 위성 객체 (22개)
-    satellites = []
+    # # 궤도가 가진 위성 객체 (22개)
+    # satellites = []
     # 궤도 요소
     semi_major_axis = 6371  # km
     inclination = 0
@@ -30,6 +31,7 @@ class Orbit:
     orbit_attr = None
 
     def __init__(self, index, inclination, altitude, lon_of_ascending, color):
+        self.satellites = []
         self.id = self.id + str(index)
         self.inclination = inclination
         self.lon_of_ascending = lon_of_ascending
@@ -46,6 +48,7 @@ class Orbit:
         for idx in range(satNum):
             sat = Satellite(self, idx, inclination, altitude, idx * satRot)
             self.satellites.append(sat)
+            print(sat.id, "is appended in", self.id)
             # 아래 코드 주석 해제하면 각 위성이 가진 ECEF, LLH좌표 확인가능
             # print(sat.get_llh_info())
             # print(sat.get_ecef_info())
@@ -74,7 +77,7 @@ class Satellite:
     x, y, z = 0, 0, 0
 
     def __init__(self, orbit, sat_index, inclination, alt, theta):
-        self.id = self.id + str(sat_index)
+        self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
         self.altitude = alt
@@ -109,7 +112,7 @@ class Satellite:
         return info
 
     def refresh(self, dt):
-        self.true_anomaly = (self.true_anomaly+dt) % 360
+        self.true_anomaly = (self.true_anomaly + dt) % 360
         # 위도, 경도
         self.latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly))
         self.longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly),
@@ -130,7 +133,7 @@ orbits = []
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
 monitor_width = M_size[0]
-monitor_height = M_size[1] -100
+monitor_height = M_size[1] - 100
 
 # 씬 구성
 # 기준 춘분점(Reference direction vector = (0, 0, 1))
@@ -153,14 +156,25 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 running = True
 setting = True
 scene.caption = "\nOrbital inclination/    Altitude      / Orbits Number /Satellites Number\n\n"
+scene.caption = "\nOrbital inclination / Altitude / Orbits Number / Satellites Number\n\n"
+
+
 def Inc(i):
     return i.number
+
+
 def Alt(a):
     return a.number
+
+
 def OrbNum(o):
     return o.number
+
+
 def SatNum(s):
     return s.number
+
+
 def Set(s):
     global setting
     setting = not setting
@@ -168,6 +182,8 @@ def Set(s):
         s.text = "Set"
     else:
         s.text = "Setting"
+
+
 def Run(r):
     global running
     running = not running
@@ -176,18 +192,20 @@ def Run(r):
     else:
         r.text = "Runnning"
 
-n = winput( bind=Inc, width = 120, type = "numeric")
-i = winput( bind=Alt, width = 120, type = "numeric" )
-o = winput( bind=OrbNum, width = 120, type = "numeric" )
-s = winput( bind=SatNum, width = 120, type = "numeric" )
+
+n = winput(bind=Inc, width=120, type="numeric")
+i = winput(bind=Alt, width=120, type="numeric")
+o = winput(bind=OrbNum, width=120, type="numeric")
+s = winput(bind=SatNum, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
+
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     if int(math.degrees(inc)) is 90:
-        for i in range(int(orbitNum)):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, orbitRot/2 * i, color))
+        for i in range(int(orbitNum / 2)):  # 궤도생성
+            orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     else:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
@@ -221,7 +239,7 @@ while 1:
         orbitRot = math.radians(360 / orbitNum)
         satRot = math.radians(360 / satNum)
         deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
-        orbit_cnt = (orbit_cnt+1) % 4
+        orbit_cnt = (orbit_cnt + 1) % 4
         setting = not setting
 
     while running == False:
@@ -229,6 +247,6 @@ while 1:
         for orbit in orbits:
             for sat in orbit.satellites:
                 sat.refresh(CONST_SAT_DT)
-            sleep(1.5)
-            if running == True:
-                break
+        sleep(1.5)
+        if running == True:
+            break
