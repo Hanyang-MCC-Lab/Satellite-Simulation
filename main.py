@@ -1,4 +1,6 @@
 'Python 3.7'
+import time
+
 import vpython
 
 'Web VPython 3.2'
@@ -29,8 +31,10 @@ class Orbit:
     lon_of_ascending = 0
     # 궤도 모형
     orbit_attr = None
+    orbits = []
 
     def __init__(self, index, inclination, altitude, lon_of_ascending, color):
+        self.orbits.append(self)
         self.satellites = []
         self.id = self.id + str(index)
         self.inclination = inclination
@@ -76,7 +80,7 @@ class Satellite:
     # ECEF 좌표계상의 x, y, z좌표
     x, y, z = 0, 0, 0
 
-    def __init__(self, orbit, sat_index, inclination, alt, theta):
+    def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
@@ -111,6 +115,13 @@ class Satellite:
         }
         return info
 
+    def get_sat_info(self):
+        start_info = self.id.split("-")
+        info = {"orbit": int(start_info[1]),
+                "satellite": int(start_info[2]),
+                }
+        return info
+
     def refresh(self, dt):
         self.true_anomaly = (self.true_anomaly + dt) % 360
         # 위도, 경도
@@ -124,11 +135,84 @@ class Satellite:
         # 구체 attribute 재설정
         self.sat_attr.pos = vec(self.y, self.z, self.x)
 
+    def find_proper(self, cur_info, horizontal, vertical):
+        proper_sat = self
+        right, left = ((cur_info["orbit"] + 1) + orbitNum) % orbitNum, ((cur_info["orbit"] - 1) + orbitNum) % orbitNum
+        up, down = ((cur_info["satellite"] + 1) + satNum) % satNum, ((cur_info["satellite"] - 1) + satNum) % satNum
+        if vertical > 0:
+            if horizontal > 0:  # 위로, 동으로
+                proper_sat = self.orbit.orbits[right].satellites[up]
+            elif horizontal < 0:  # 위로, 서로
+                proper_sat = self.orbit.orbits[left].satellites[up]
+            else:  # 위로
+                proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[up]
+
+        elif vertical < 0:
+            if horizontal > 0:  # 아래로, 동으로
+                proper_sat = self.orbit.orbits[right].satellites[down]
+            elif horizontal < 0:  # 아래로, 서로
+                proper_sat = self.orbit.orbits[left].satellites[down]
+            else:  # 아래로
+                proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[down]
+        else:
+            if horizontal > 0:  # 동으로
+                proper_sat = self.orbit.orbits[right].satellites[cur_info["satellite"]]
+            else:  # 서로
+                proper_sat = self.orbit.orbits[left].satellites[cur_info["satellite"]]
+
+        return proper_sat
+
+    def transfer(self, destination, path):
+        print("packet is in", self.id)
+        # sleep(1)
+        path.append(self)
+        if destination.id == self.id:
+            return path
+        else:
+            dest_info = destination.get_sat_info()
+            cur_info = self.get_sat_info()
+            horizontal, vertical = 0, 0
+
+            west_distance = ((cur_info["orbit"] - dest_info["orbit"]) + orbitNum) % orbitNum
+            east_distance = ((dest_info["orbit"] - cur_info["orbit"]) + orbitNum) % orbitNum
+            # print("west, east distance:", west_distance, east_distance)
+            if west_distance <= east_distance and west_distance != 0:
+                horizontal = -1
+            elif west_distance > east_distance:
+                horizontal = 1
+
+            south_distance = ((cur_info["satellite"] - dest_info["satellite"]) + satNum) % satNum
+            north_distance = ((dest_info["satellite"] - cur_info["satellite"]) + satNum) % satNum
+            # print("north, south distance:", north_distance, south_distance)
+            if north_distance <= south_distance and north_distance != 0:
+                vertical = 1
+            elif north_distance > south_distance:
+                vertical = -1
+            # print("horizontal, vertical:", horizontal, vertical)
+            return self.find_proper(cur_info, horizontal, vertical).transfer(destination, path)
+
+
+class Network:
+    def __init__(self):
+        self.log = []
+
+    def routing(self, start: Satellite, dest: Satellite):
+        start_time = time.perf_counter()
+        path = start.transfer(dest, [])
+        finish_time = time.perf_counter()
+        delay = finish_time - start_time
+        self.log.append({
+            "packet": "Packet-"+start.id+"To"+dest.id,
+            "delay": round(delay*1000, 6),
+            "path": path,
+        })
+
+
 
 # 클래스 끝, 메인 로직 시작
 
 # 궤도 및 위성 리스트 생성
-orbits = []
+constellations = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
@@ -152,7 +236,7 @@ t3 = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=
           color=color.cyan, billboard=True, emissive=True, depth=0.15)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 
-#입력 GUI구성
+# 입력 GUI구성
 running = True
 setting = True
 scene.caption = "\nOrbital inclination/    Altitude      / Orbits Number /Satellites Number\n\n"
@@ -203,12 +287,14 @@ button(text="Run", bind=Run)
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
+    orbits = []
     if int(math.degrees(inc)) is 90:
         for i in range(int(orbitNum / 2)):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     else:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
+    constellations.append(orbits)
 
     # 계산로직
     # orbit.append(ring(pos=vec(0, 0, 0),
@@ -228,7 +314,9 @@ def deploy(inc, axis, color):
 
 # 메인
 orbit_cnt = 0
+network = Network()
 while 1:
+
     while setting == False:
         # 케플러요소 입력
         print("Setting")
@@ -244,9 +332,33 @@ while 1:
 
     while running == False:
         print("Running")
-        for orbit in orbits:
-            for sat in orbit.satellites:
-                sat.refresh(CONST_SAT_DT)
+        for orbits in constellations:
+            for orbit in orbits:
+                for sat in orbit.satellites:
+                    sat.refresh(CONST_SAT_DT)
         sleep(1.5)
         if running == True:
             break
+    if orbit_cnt > 0:
+        a = input("start orbit/sat number:(orbit index/sat index)")
+        b = input("end orbit/sat number:(orbit index/sat index)")
+        s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
+        e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
+        network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+
+        for i in range(len(network.log)):
+            if len(network.log) > 1:
+                for j in network.log[i-1]["path"]:
+                    j.sat_attr.color = color.white
+            for j in network.log[i]["path"]:
+                j.sat_attr.color = color.cyan
+
+        print("============log details============")
+        print("packt_ID       delay(ms)         path")
+        packet_idx = 0
+        for i in network.log:
+            print(packet_idx, "            ", i["delay"], "        ", end="[")
+            for j in i["path"][:-1]:
+                print(j.id, end="->")
+            print(i["path"][-1].id + "]")
+            packet_idx += 1
