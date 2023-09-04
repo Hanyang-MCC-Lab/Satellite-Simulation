@@ -196,6 +196,13 @@ class Network:
     def __init__(self):
         self.log = []
 
+    def get_euc_distance(self, node_A: Satellite, node_B: Satellite):
+        node_A_ecef = list(node_A.get_ecef_info().values())
+        node_B_ecef = list(node_B.get_ecef_info().values())
+        print(node_A_ecef)
+        print(node_B_ecef)
+        print(math.dist(node_A_ecef, node_B_ecef))
+
     def routing(self, start: Satellite, dest: Satellite):
         start_time = time.perf_counter()
         path = start.transfer(dest, [])
@@ -345,6 +352,7 @@ while 1:
         s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
         e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
         network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+        # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
 
         for i in range(len(network.log)):
             if len(network.log) > 1:
