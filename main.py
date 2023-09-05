@@ -196,18 +196,23 @@ class Network:
     def __init__(self):
         self.log = []
 
+    # 유클리드 기반 노드 간 거리
     def get_euc_distance(self, node_A: Satellite, node_B: Satellite):
         node_A_ecef = list(node_A.get_ecef_info().values())
         node_B_ecef = list(node_B.get_ecef_info().values())
-        print(node_A_ecef)
-        print(node_B_ecef)
-        print(math.dist(node_A_ecef, node_B_ecef))
+        return math.dist(node_A_ecef, node_B_ecef)
+
+    # laser 기반 delay 계산
+    def get_delay(self, node_A: Satellite, node_B: Satellite):
+        distance = self.get_euc_distance(node_A, node_B)
+        return distance/3.0e8
 
     def routing(self, start: Satellite, dest: Satellite):
-        start_time = time.perf_counter()
+        # start_time = time.perf_counter()
         path = start.transfer(dest, [])
-        finish_time = time.perf_counter()
-        delay = finish_time - start_time
+        # finish_time = time.perf_counter()
+        # delay = finish_time - start_time
+        delay = self.get_delay(start, dest)
         self.log.append({
             "packet": "Packet-"+start.id+"To"+dest.id,
             "delay": round(delay*1000, 6),
