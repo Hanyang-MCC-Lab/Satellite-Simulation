@@ -44,19 +44,21 @@ points = [
     (3, 4, 5),
     (6, 7, 8),
 ]
+def get_proper(src, dest, available_list):
+    smallest_angle = float('inf')
+    point_with_smallest_angle = None
 
-smallest_angle = float('inf')
-point_with_smallest_angle = None
+    vector = calculate_vector(src, dest)
 
-vector = calculate_vector(src, dst)
+    for point in available_list:
+        if max_dist_condition(src, point):
+            vector2 = calculate_vector(src, point)
+            angle = calculate_angle(vector, vector2)
 
-for point in points:
-    if max_dist_condition(src, point):
-        vector2 = calculate_vector(src, point)
-        angle = calculate_angle(vector, vector2)
+            if angle < smallest_angle:
+                smallest_angle = angle
+                point_with_smallest_angle = point
 
-        if angle < smallest_angle:
-            smallest_angle = angle
-            point_with_smallest_angle = point
+    return point_with_smallest_angle
 
 print(f"The point with the smallest angle to the vector is {point_with_smallest_angle} with an angle of {smallest_angle} degrees.")
