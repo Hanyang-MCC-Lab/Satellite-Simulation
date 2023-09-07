@@ -2,6 +2,7 @@ import math
 
 MAX_DIST = 10
 
+
 # TODO
 # 현재: 점들 주어진 상황에서 최대 통신 거리에 따라서 가능한 점들 중 minimum deflection angle을 선택 가능
 # ex) MAX_DIST를 10에서 100으로 변경하면 더 멀리 있는 많은 점들을 고려할 수 있고, 실제로 next hop이 (3,4,5)에서 (7,8,9)로 변경됨.
@@ -14,6 +15,7 @@ def calculate_vector(point1, point2):
 
     vector = [point2[0] - point1[0], point2[1] - point1[1], point2[2] - point1[2]]
     return vector
+
 
 def calculate_angle(vector1, vector2):
     dot_product = sum(v1 * v2 for v1, v2 in zip(vector1, vector2))
@@ -28,37 +30,43 @@ def calculate_angle(vector1, vector2):
     angle_in_degrees = math.degrees(angle_in_radians)
     return angle_in_degrees
 
-def get_euc_distance(A,B):
+
+def get_euc_distance(A, B):
     return math.dist(A, B)
 
-def max_dist_condition(A,B):
-    return get_euc_distance(A,B) < MAX_DIST
 
-src = (0, 0, 0)
-dst = (10, 10, 10)
+def max_dist_condition(A, B, maxd):
+    return get_euc_distance(A, B) < maxd
 
-points = [
-    (7, 8, 9),
-    (-1, -2, -3),
-    (10, 0, 5),
-    (3, 4, 5),
-    (6, 7, 8),
-]
+#
+# src = (0, 0, 0)
+# dst = (10, 10, 10)
+#
+# points = [
+#     (7, 8, 9),
+#     (-1, -2, -3),
+#     (10, 0, 5),
+#     (3, 4, 5),
+#     (6, 7, 8),
+# ]
+
+
 def get_proper(src, dest, available_list):
     smallest_angle = float('inf')
-    point_with_smallest_angle = None
+    index_of_point_with_smallest_angle = None
 
     vector = calculate_vector(src, dest)
+    print("=====available=====")
+    print(available_list)
+    for i in range(len(available_list)):
+        # if max_dist_condition(src, point):
+        vector2 = calculate_vector(src, available_list[i])
+        angle = calculate_angle(vector, vector2)
 
-    for point in available_list:
-        if max_dist_condition(src, point):
-            vector2 = calculate_vector(src, point)
-            angle = calculate_angle(vector, vector2)
+        if angle < smallest_angle:
+            smallest_angle = angle
+            index_of_point_with_smallest_angle = i
 
-            if angle < smallest_angle:
-                smallest_angle = angle
-                point_with_smallest_angle = point
+    return index_of_point_with_smallest_angle
 
-    return point_with_smallest_angle
-
-print(f"The point with the smallest angle to the vector is {point_with_smallest_angle} with an angle of {smallest_angle} degrees.")
+# print(f"The point with the smallest angle to the vector is {point_with_smallest_angle} with an angle of {smallest_angle} degrees.")
