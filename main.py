@@ -7,10 +7,14 @@ import vpython
 from vpython import *
 import pyautogui
 import math
+from minimum_deflection_angle import *
+
+set_browser(type='pyqt')
 
 # 상수선언
 orbitNum = 72
 satNum = 22
+CONST_MAX_DISTANCE = 0
 CONST_EARTH_RADIUS = 6371  # 지구반경
 # CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
@@ -108,12 +112,8 @@ class Satellite:
 
     # 위성의 ECEF 좌표를 GET하는 메소드
     def get_ecef_info(self):
-        info = {
-            "x": self.x,
-            "y": self.y,
-            "z": self.z,
-        }
-        return info
+
+        return [self.x, self.y, self.z]
 
     def get_sat_info(self):
         start_info = self.id.split("-")
@@ -135,32 +135,32 @@ class Satellite:
         # 구체 attribute 재설정
         self.sat_attr.pos = vec(self.y, self.z, self.x)
 
-    def find_proper(self, cur_info, horizontal, vertical):
-        proper_sat = self
-        right, left = ((cur_info["orbit"] + 1) + orbitNum) % orbitNum, ((cur_info["orbit"] - 1) + orbitNum) % orbitNum
-        up, down = ((cur_info["satellite"] + 1) + satNum) % satNum, ((cur_info["satellite"] - 1) + satNum) % satNum
-        if vertical > 0:
-            if horizontal > 0:  # 위로, 동으로
-                proper_sat = self.orbit.orbits[right].satellites[up]
-            elif horizontal < 0:  # 위로, 서로
-                proper_sat = self.orbit.orbits[left].satellites[up]
-            else:  # 위로
-                proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[up]
-
-        elif vertical < 0:
-            if horizontal > 0:  # 아래로, 동으로
-                proper_sat = self.orbit.orbits[right].satellites[down]
-            elif horizontal < 0:  # 아래로, 서로
-                proper_sat = self.orbit.orbits[left].satellites[down]
-            else:  # 아래로
-                proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[down]
-        else:
-            if horizontal > 0:  # 동으로
-                proper_sat = self.orbit.orbits[right].satellites[cur_info["satellite"]]
-            else:  # 서로
-                proper_sat = self.orbit.orbits[left].satellites[cur_info["satellite"]]
-
-        return proper_sat
+    # def find_proper(self, cur_info, horizontal, vertical):
+    #     proper_sat = self
+    #     right, left = ((cur_info["orbit"] + 1) + orbitNum) % orbitNum, ((cur_info["orbit"] - 1) + orbitNum) % orbitNum
+    #     up, down = ((cur_info["satellite"] + 1) + satNum) % satNum, ((cur_info["satellite"] - 1) + satNum) % satNum
+    #     if vertical > 0:
+    #         if horizontal > 0:  # 위로, 동으로
+    #             proper_sat = self.orbit.orbits[right].satellites[up]
+    #         elif horizontal < 0:  # 위로, 서로
+    #             proper_sat = self.orbit.orbits[left].satellites[up]
+    #         else:  # 위로
+    #             proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[up]
+    #
+    #     elif vertical < 0:
+    #         if horizontal > 0:  # 아래로, 동으로
+    #             proper_sat = self.orbit.orbits[right].satellites[down]
+    #         elif horizontal < 0:  # 아래로, 서로
+    #             proper_sat = self.orbit.orbits[left].satellites[down]
+    #         else:  # 아래로
+    #             proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[down]
+    #     else:
+    #         if horizontal > 0:  # 동으로
+    #             proper_sat = self.orbit.orbits[right].satellites[cur_info["satellite"]]
+    #         else:  # 서로
+    #             proper_sat = self.orbit.orbits[left].satellites[cur_info["satellite"]]
+    #
+    #     return proper_sat
 
     def transfer(self, destination, path):
         print("packet is in", self.id)
@@ -200,12 +200,13 @@ class Network:
     def get_euc_distance(self, node_A: Satellite, node_B: Satellite):
         node_A_ecef = list(node_A.get_ecef_info().values())
         node_B_ecef = list(node_B.get_ecef_info().values())
+        print(node_B_ecef)
         return math.dist(node_A_ecef, node_B_ecef)
 
     # laser 기반 delay 계산
     def get_delay(self, node_A: Satellite, node_B: Satellite):
         distance = self.get_euc_distance(node_A, node_B)
-        return distance/3.0e8
+        return distance / 3.0e8
 
     def routing(self, start: Satellite, dest: Satellite):
         # start_time = time.perf_counter()
@@ -214,11 +215,10 @@ class Network:
         # delay = finish_time - start_time
         delay = self.get_delay(start, dest)
         self.log.append({
-            "packet": "Packet-"+start.id+"To"+dest.id,
-            "delay": round(delay*1000, 6),
+            "packet": "Packet-" + start.id + "To" + dest.id,
+            "delay": round(delay * 1000, 6),
             "path": path,
         })
-
 
 
 # 클래스 끝, 메인 로직 시작
@@ -271,6 +271,10 @@ def SatNum(s):
     return s.number
 
 
+def MaxDist(d):
+    return s.number
+
+
 def Set(s):
     global setting
     setting = not setting
@@ -293,6 +297,7 @@ n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
 o = winput(bind=OrbNum, width=120, type="numeric")
 s = winput(bind=SatNum, width=120, type="numeric")
+d = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
 
@@ -361,7 +366,7 @@ while 1:
 
         for i in range(len(network.log)):
             if len(network.log) > 1:
-                for j in network.log[i-1]["path"]:
+                for j in network.log[i - 1]["path"]:
                     j.sat_attr.color = color.white
             for j in network.log[i]["path"]:
                 j.sat_attr.color = color.cyan
