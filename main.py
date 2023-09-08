@@ -100,7 +100,10 @@ class Satellite:
         # 구체 attribute 설정
         self.sat_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
 
-        self.state = "up" if 270<=math.degrees(theta)<=90 else "down"
+        if math.degrees(theta) >= 270 or math.degrees(theta) <= 90:
+            self.state = 'up'
+        else:
+            self.state = 'down'
 
     # 위성의 LLH를 GET하는 메소드, 다만 라디안으로 저장되어 있어 일반 degree로 변환이 필요함(지금은 안되어 있음)
     def get_llh_info(self):
@@ -128,15 +131,19 @@ class Satellite:
         self.true_anomaly = math.radians((math.degrees(self.true_anomaly) + dt) % 360)
         # 위도, 경도
         self.latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly))
-        self.state = "up" if 270 <= math.degrees(self.true_anomaly) <= 360 or 0 <= math.degrees(self.true_anomaly) <= 90 else "down"
         self.longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly),
-                                     math.cos(self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending
+                          math.cos(self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending
         # ECEF 좌표
         self.x = math.cos(self.latitude) * math.cos(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 재설정
         self.sat_attr.pos = vec(self.y, self.z, self.x)
+        true_anom_degree = math.degrees(self.true_anomaly)
+        if true_anom_degree >= 270 or true_anom_degree <= 90:
+            self.state = 'up'
+        else:
+            self.state = 'down'
     # 이전 라우팅 알고리즘
     # def find_proper(self, cur_info, horizontal, vertical):
     #     proper_sat = self
@@ -176,10 +183,12 @@ class Satellite:
             cur_info = self.get_ecef_info()
             available_list = []
             available_list_ecef = []
-            print("maxDistance:", maxDistance)
             for orb in constellations[0]:
                 for hop in orb.satellites:
                     if hop != self and self.state == hop.state and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
+                        # print("cur.state: ", self.state)
+                        # print("hop.state: ", hop.state)
+                        # print("----------------------")
                         available_list.append(hop)
                         available_list_ecef.append(hop.get_ecef_info())
             index_of_next_hop = get_proper(cur_info, dest_info, available_list_ecef)
@@ -381,8 +390,10 @@ while 1:
             if len(network.log) > 1:
                 for j in network.log[i - 1]["path"]:
                     j.sat_attr.color = color.white
+                    j.sat_attr.radius = 60
             for j in network.log[i]["path"]:
                 j.sat_attr.color = color.cyan
+                j.sat_attr.radius = 120
 
         print("============log details============")
         print("packt_ID       delay(ms)         path")

@@ -56,8 +56,7 @@ def get_proper(src, dest, available_list):
     index_of_point_with_smallest_angle = None
 
     vector = calculate_vector(src, dest)
-    print("=====available=====")
-    print(available_list)
+
     for i in range(len(available_list)):
         # if max_dist_condition(src, point):
         vector2 = calculate_vector(src, available_list[i])
