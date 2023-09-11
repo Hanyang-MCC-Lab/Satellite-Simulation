@@ -1,6 +1,6 @@
 'Python 3.9'
 import time
-
+import numpy as np
 import vpython
 
 'Web VPython 3.2'
@@ -172,6 +172,40 @@ class Satellite:
     #
     #     return proper_sat
 
+    def get_great_distance(self, node_A, node_B):
+        radius = CONST_EARTH_RADIUS + node_A.get_llh_info()['alt']
+        lon_node_A = node_A.get_llh_info()['lon']
+        lat_node_A = node_A.get_llh_info()['lat']
+        lon_node_B = node_B.get_llh_info()['lon']
+        lat_node_B = node_B.get_llh_info()['lat']
+
+        lon_node_A = math.radians(lon_node_A)
+        lat_node_A = math.radians(lat_node_A)
+        lon_node_B = math.radians(lon_node_B)
+        lat_node_B = math.radians(lat_node_B)
+
+        dlon = lon_node_B - lon_node_A
+        dlat = lat_node_B - lat_node_A
+
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat_node_A) * math.cos(lat_node_B) * math.sin(dlon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        distance = radius * c
+        return distance
+
+    def get_proper2(self, dest, available_list):
+        smallest_distance = float('inf')
+        index_of_point_with_smallest_distance = None
+
+        for i in range(len(available_list)):
+            print(available_list[i])
+            print(dest)
+            dist = self.get_great_distance(available_list[i], dest)
+            if dist < smallest_distance:
+                smallest_distance = dist
+                index_of_point_with_smallest_distance = i
+
+        return index_of_point_with_smallest_distance
+
     def transfer(self, destination, path):
         print("packet is in", self.id)
         # sleep(1)
@@ -186,13 +220,11 @@ class Satellite:
             for orb in constellations[0]:
                 for hop in orb.satellites:
                     if hop != self and self.state == hop.state and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
-                        # print("cur.state: ", self.state)
-                        # print("hop.state: ", hop.state)
-                        # print("----------------------")
                         available_list.append(hop)
                         available_list_ecef.append(hop.get_ecef_info())
-            index_of_next_hop = get_proper(cur_info, dest_info, available_list_ecef)
+            index_of_next_hop = self.get_proper2(destination, available_list)
             return available_list[index_of_next_hop].transfer(destination, path)
+
             # 이전 알고리즘 : 8방향
             # west_distance = ((cur_info["orbit"] - dest_info["orbit"]) + orbitNum) % orbitNum
             # east_distance = ((dest_info["orbit"] - cur_info["orbit"]) + orbitNum) % orbitNum
@@ -275,6 +307,28 @@ setting = True
 scene.caption = "\nOrbital inclination/    Altitude      / Orbits Number /Satellites Number\n\n"
 scene.caption = "\nOrbital inclination / Altitude / Orbits Number / Satellites Number / Max Transfer distance\n\n"
 
+
+
+def get_perpendicular_vector(point_coordinates):
+    point_coordinates = (point_coordinates.x, point_coordinates.y, point_coordinates.z)
+    point_vector = np.array(point_coordinates, dtype=float)
+
+    perpendicular_vector = np.array([1.0, 0.0, 0.0], dtype=float)
+
+    perpendicular_vector -= np.dot(perpendicular_vector, point_vector) / np.dot(point_vector, point_vector) * point_vector
+
+    perpendicular_vector /= np.linalg.norm(perpendicular_vector)
+    perpendicular_vector = vector(perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2])
+    return perpendicular_vector
+
+# def draw_max_distance_circle(node_position, max_distance):
+#     perpendicular_vector = get_perpendicular_vector(node_position)
+#     # Create a ring in the XY plane (z=0) with the specified radius
+#     ring(pos=node_position, axis=perpendicular_vector, radius=max_distance, thickness=30, color=color.green, opacity=0.3)
+
+
+def draw_max_distance_circle(node_position, max_distance):
+    sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1)
 
 def Inc(i):
     return i.number
@@ -394,6 +448,8 @@ while 1:
             for j in network.log[i]["path"]:
                 j.sat_attr.color = color.cyan
                 j.sat_attr.radius = 120
+                draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+
 
         print("============log details============")
         print("packt_ID       delay(ms)         path")
