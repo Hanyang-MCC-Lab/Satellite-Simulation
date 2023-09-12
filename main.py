@@ -55,7 +55,7 @@ class Orbit:
         for idx in range(satNum):
             sat = Satellite(self, idx, inclination, altitude, idx * satRot)
             self.satellites.append(sat)
-            print(sat.id, "is appended in", self.id)
+            # print(sat.id, "is appended in", self.id)
             # 아래 코드 주석 해제하면 각 위성이 가진 ECEF, LLH좌표 확인가능
             # print(sat.get_llh_info())
             # print(sat.get_ecef_info())
@@ -195,14 +195,19 @@ class Satellite:
     def get_proper2(self, dest, available_list):
         smallest_distance = float('inf')
         index_of_point_with_smallest_distance = None
-
+        print("current sat:", self.id)
+        print("available list is")
         for i in range(len(available_list)):
-            print("available_list[i]",available_list[i])
-            print("dest",dest)
+            # print("available_list[i]",available_list[i])
+            # print("dest",dest)
+            if available_list[i].id == dest.id:
+                return i
             dist = self.get_great_distance(available_list[i], dest)
-            if dist < smallest_distance:
+            print(available_list[i].id, "  distance:", dist)
+            if dist < smallest_distance and dist > 100:
                 smallest_distance = dist
                 index_of_point_with_smallest_distance = i
+        print("====================================")
 
         return index_of_point_with_smallest_distance
 
@@ -219,10 +224,12 @@ class Satellite:
             available_list_ecef = []
             for orb in constellations[0]:
                 for hop in orb.satellites:
-                    if hop != self and self.state == hop.state and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
+                    if hop != self and (self.orbit == hop.orbit or self.state == hop.state) and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
                         available_list.append(hop)
                         available_list_ecef.append(hop.get_ecef_info())
             index_of_next_hop = self.get_proper2(destination, available_list)
+            print("next hop is", available_list[index_of_next_hop].id)
+            sleep(1)
             return available_list[index_of_next_hop].transfer(destination, path)
 
             # 이전 알고리즘 : 8방향
