@@ -197,8 +197,8 @@ class Satellite:
         index_of_point_with_smallest_distance = None
 
         for i in range(len(available_list)):
-            print(available_list[i])
-            print(dest)
+            print("available_list[i]",available_list[i])
+            print("dest",dest)
             dist = self.get_great_distance(available_list[i], dest)
             if dist < smallest_distance:
                 smallest_distance = dist
@@ -278,6 +278,7 @@ class Network:
 
 # 궤도 및 위성 리스트 생성
 constellations = []
+distance_circles = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
@@ -328,8 +329,7 @@ def get_perpendicular_vector(point_coordinates):
 
 
 def draw_max_distance_circle(node_position, max_distance):
-    sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1)
-
+    distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
 def Inc(i):
     return i.number
 
@@ -445,6 +445,8 @@ while 1:
                 for j in network.log[i - 1]["path"]:
                     j.sat_attr.color = color.white
                     j.sat_attr.radius = 60
+                for j in distance_circles:
+                    j.visible = False
             for j in network.log[i]["path"]:
                 j.sat_attr.color = color.cyan
                 j.sat_attr.radius = 120
