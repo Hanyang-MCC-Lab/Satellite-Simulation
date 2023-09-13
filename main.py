@@ -152,7 +152,34 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 #입력 GUI구성
 running = True
 setting = True
+<<<<<<< Updated upstream
 scene.caption = "\nOrbital inclination / Altitude / Orbits Number / Satellites Number\n\n"
+=======
+scene.caption = "\nOrbital inclination / Altitude / Orbits Number / Satellites Number / Max Transfer distance\n\n"
+
+
+
+def get_perpendicular_vector(point_coordinates):
+    point_coordinates = (point_coordinates.x, point_coordinates.y, point_coordinates.z)
+    point_vector = np.array(point_coordinates, dtype=float)
+
+    perpendicular_vector = np.array([1.0, 0.0, 0.0], dtype=float)
+
+    perpendicular_vector -= np.dot(perpendicular_vector, point_vector) / np.dot(point_vector, point_vector) * point_vector
+
+    perpendicular_vector /= np.linalg.norm(perpendicular_vector)
+    perpendicular_vector = vector(perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2])
+    return perpendicular_vector
+
+# def draw_max_distance_circle(node_position, max_distance):
+#     perpendicular_vector = get_perpendicular_vector(node_position)
+#     # Create a ring in the XY plane (z=0) with the specified radius
+#     ring(pos=node_position, axis=perpendicular_vector, radius=max_distance, thickness=30, color=color.green, opacity=0.3)
+
+
+def draw_max_distance_circle(node_position, max_distance):
+    distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
+>>>>>>> Stashed changes
 def Inc(i):
     return i.number
 def Alt(a):
@@ -161,6 +188,15 @@ def OrbNum(o):
     return o.number
 def SatNum(s):
     return s.number
+<<<<<<< Updated upstream
+=======
+
+
+def MaxDist(m):
+    return m.number
+
+
+>>>>>>> Stashed changes
 def Set(s):
     global setting
     setting = not setting
@@ -176,12 +212,40 @@ def Run(r):
     else:
         r.text = "Runnning"
 
+<<<<<<< Updated upstream
 n = winput( bind=Inc, width = 120, type = "numeric")
 i = winput( bind=Alt, width = 120, type = "numeric" )
 o = winput( bind=OrbNum, width = 120, type = "numeric" )
 s = winput( bind=SatNum, width = 120, type = "numeric" )
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
+=======
+def Route(t):
+    global routing
+    routing = not routing
+    if routing:
+        t.text = "Route"
+    else:
+        t.text = "Routing"
+
+def Src(s):
+    return s.text
+
+def Dst(d):
+    return d.text
+
+
+n = winput(bind=Inc, width=120, type="numeric")
+i = winput(bind=Alt, width=120, type="numeric")
+o = winput(bind=OrbNum, width=120, type="numeric")
+s = winput(bind=SatNum, width=120, type="numeric")
+m = winput(bind=MaxDist, width=120, type="numeric")
+button(text="Set", bind=Set)
+button(text="Run", bind=Run)
+s = winput(bind=Src, width=120, type="string")
+d = winput(bind=Dst, width=120, type="string")
+button(text="Route", bind= Route)
+>>>>>>> Stashed changes
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
@@ -207,6 +271,49 @@ def deploy(inc, axis, color):
     #                               math.sin(orbitRot * i) * math.cos(satRot * j) * CONST_ORBIT_RADIUS + math.cos(orbitRot * i) * math.cos(inclination) * math.sin(satRot * j) * CONST_ORBIT_RADIUS),
     #                       axis=vec(1, 0, 0), radius=60, color=color.white))
 
+<<<<<<< Updated upstream
+=======
+def routing_simulation():
+    print("routing simulation")
+    while more == 'y' or more == 'Y':
+        if orbit_cnt > 0:
+            a = Src(s)
+            b = Dst(d)
+            s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
+            e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
+            network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+            # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+
+            for i in range(len(network.log)):
+                if len(network.log) > 1:
+                    for j in network.log[i - 1]["path"]:
+                        j.sat_attr.color = color.white
+                        j.sat_attr.radius = 60
+                    for j in distance_circles:
+                        j.visible = False
+                for j in network.log[i]["path"]:
+                    j.sat_attr.color = color.cyan
+                    j.sat_attr.radius = 120
+                    draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+
+
+            print("============log details============")
+            print("packt_ID       delay(ms)         path")
+            packet_idx = 0
+            for i in network.log:
+                print(packet_idx, "            ", i["delay"], "        ", end="[")
+                for j in i["path"][:-1]:
+                    print(j.id, end="->")
+                print(i["path"][-1].id + "]")
+                packet_idx += 1
+            more = input("more test? [y/n]")
+    for i in range(len(network.log)):
+        for j in network.log[i - 1]["path"]:
+            j.sat_attr.color = color.white
+            j.sat_attr.radius = 60
+        for j in distance_circles:
+            j.visible = False
+>>>>>>> Stashed changes
 
 # 메인
 orbit_cnt = 0
