@@ -311,8 +311,7 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 # 입력 GUI구성
 running = True
 setting = True
-scene.caption = "\nOrbital inclination/    Altitude      / Orbits Number /Satellites Number\n\n"
-scene.caption = "\nOrbital inclination / Altitude / Orbits Number / Satellites Number / Max Transfer distance\n\n"
+scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
 
 
 
@@ -374,13 +373,31 @@ def Run(r):
         r.text = "Runnning"
 
 
+def Route(t):
+    global routing
+    routing = not routing
+    if routing:
+        t.text = "Route"
+    else:
+        t.text = "Routing"
+
+def Src(q):
+    return q.text
+
+def Dst(d):
+    return d.text
+
+
 n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
 o = winput(bind=OrbNum, width=120, type="numeric")
 s = winput(bind=SatNum, width=120, type="numeric")
-d = winput(bind=MaxDist, width=120, type="numeric")
+m = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
+q = winput(bind=Src, width=120, type="string")
+d = winput(bind=Dst, width=120, type="string")
+button(text="Route", bind= Route)
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -414,8 +431,8 @@ def routing_simulation():
     more = 'y'
     while more == 'y' or more == 'Y':
         if orbit_cnt > 0:
-            a = input("start orbit/sat number:(orbit index/sat index)")
-            b = input("end orbit/sat number:(orbit index/sat index)")
+            a = Src(q)
+            b = Dst(d)
             s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
             e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
             network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
@@ -467,7 +484,7 @@ while 1:
         satNum = SatNum(s)
         orbitRot = math.radians(360 / orbitNum)
         satRot = math.radians(360 / satNum)
-        maxDistance = MaxDist(d)
+        maxDistance = MaxDist(m)
         deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
         orbit_cnt = (orbit_cnt + 1) % 4
         setting = not setting
@@ -478,6 +495,7 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
+
         sleep(1.5)
         if running == True:
             break
