@@ -333,8 +333,13 @@ def get_perpendicular_vector(point_coordinates):
 #     ring(pos=node_position, axis=perpendicular_vector, radius=max_distance, thickness=30, color=color.green, opacity=0.3)
 
 
-def draw_max_distance_circle(node_object: vpython.sphere, max_distance):
-    distance_circles.append(sphere(pos=node_object.pos, radius=max_distance, color=color.green, opacity=0.1))
+def draw_max_distance_circle(node_position, max_distance):
+    distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
+
+def refresh_max_distance_circle():
+    for r in range (len(distance_circles)):
+        distance_circles[r].pos = network.log[0]["path"][r].sat_attr.pos
+
 def Inc(i):
     return i.number
 
@@ -444,7 +449,7 @@ def routing_simulation():
                 for j in network.log[i]["path"]:
                     j.sat_attr.color = color.cyan
                     j.sat_attr.radius = 120
-                    draw_max_distance_circle(j.sat_attr, maxDistance)
+                    draw_max_distance_circle(j.sat_attr.pos, maxDistance)
 
 
             print("============log details============")
@@ -491,8 +496,8 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
-
-        sleep(1.5)
+                    refresh_max_distance_circle()
+        sleep(0.1)
         if running == True:
             break
 
