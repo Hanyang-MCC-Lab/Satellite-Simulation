@@ -335,6 +335,11 @@ def get_perpendicular_vector(point_coordinates):
 
 def draw_max_distance_circle(node_position, max_distance):
     distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
+
+def refresh_max_distance_circle():
+    for r in range (len(distance_circles)):
+        distance_circles[r].pos = network.log[0]["path"][r].sat_attr.pos
+
 def Inc(i):
     return i.number
 
@@ -431,8 +436,8 @@ def routing_simulation():
     more = 'y'
     while more == 'y' or more == 'Y':
         if orbit_cnt > 0:
-            a = Src(q)
-            b = Dst(d)
+            a = input()
+            b = input()
             s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
             e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
             network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
@@ -449,6 +454,7 @@ def routing_simulation():
                     j.sat_attr.color = color.cyan
                     j.sat_attr.radius = 120
                     draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+
 
 
             print("============log details============")
@@ -495,8 +501,8 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
-
-        sleep(1.5)
+                    refresh_max_distance_circle()
+        sleep(0.1)
         if running == True:
             break
 
