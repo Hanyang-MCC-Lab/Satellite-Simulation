@@ -223,7 +223,8 @@ class Satellite:
             available_list_ecef = []
             for orb in constellations[0]:
                 for hop in orb.satellites:
-                    if hop != self and (self.orbit == hop.orbit or self.state == hop.state) and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
+                    # and (hop.orbit or self.state == hop.state) 인클 디클 고려 조건
+                    if hop != self and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
                         available_list.append(hop)
                         available_list_ecef.append(hop.get_ecef_info())
             index_of_next_hop = self.get_proper2(destination, available_list)
