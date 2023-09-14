@@ -229,7 +229,7 @@ class Satellite:
                         available_list_ecef.append(hop.get_ecef_info())
             index_of_next_hop = self.get_proper2(destination, available_list)
             print("next hop is", available_list[index_of_next_hop].id)
-            sleep(1)
+            # sleep(1)
             return available_list[index_of_next_hop].transfer(destination, path)
 
             # 이전 알고리즘 : 8방향
@@ -279,7 +279,6 @@ class Network:
             "delay": round(delay * 1000, 6),
             "path": path,
         })
-
 
 # 클래스 끝, 메인 로직 시작
 
@@ -334,8 +333,8 @@ def get_perpendicular_vector(point_coordinates):
 #     ring(pos=node_position, axis=perpendicular_vector, radius=max_distance, thickness=30, color=color.green, opacity=0.3)
 
 
-def draw_max_distance_circle(node_position, max_distance):
-    distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
+def draw_max_distance_circle(node_object: vpython.sphere, max_distance):
+    distance_circles.append(sphere(pos=node_object.pos, radius=max_distance, color=color.green, opacity=0.1))
 def Inc(i):
     return i.number
 
@@ -373,14 +372,10 @@ def Run(r):
     else:
         r.text = "Runnning"
 
-
 def Route(t):
-    global routing
-    routing = not routing
-    if routing:
-        t.text = "Route"
-    else:
-        t.text = "Routing"
+    t.text = "Routing"
+    network_simulator_thread.start()
+    t.text = "Route"
 
 def Src(q):
     return q.text
@@ -398,7 +393,7 @@ button(text="Set", bind=Set)
 button(text="Run", bind=Run)
 q = winput(bind=Src, width=120, type="string")
 d = winput(bind=Dst, width=120, type="string")
-button(text="Route", bind= Route)
+button(text="Route", bind=Route)
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -430,7 +425,7 @@ def deploy(inc, axis, color):
 def routing_simulation():
     print("routing simulation")
     more = 'y'
-    while more == 'y' or more == 'Y':
+    while (more == 'y' or more == 'Y') and (len(Src(q))+len(Dst(d)) >= 6):
         if orbit_cnt > 0:
             a = Src(q)
             b = Dst(d)
@@ -449,7 +444,7 @@ def routing_simulation():
                 for j in network.log[i]["path"]:
                     j.sat_attr.color = color.cyan
                     j.sat_attr.radius = 120
-                    draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+                    draw_max_distance_circle(j.sat_attr, maxDistance)
 
 
             print("============log details============")
@@ -473,7 +468,7 @@ def routing_simulation():
 orbit_cnt = 0
 network = Network()
 network_simulator_thread = threading.Thread(target=routing_simulation)
-network_simulator_thread.start()
+
 while 1:
 
     while setting == False:
