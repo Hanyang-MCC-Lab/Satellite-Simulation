@@ -17,7 +17,7 @@ CONST_EARTH_RADIUS = 6371  # 지구반경
 # CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
-CONST_SAT_DT = math.radians(1)  # 위성 공전 각도
+CONST_SAT_DT = math.radians(5)  # 위성 공전 각도
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
@@ -311,7 +311,7 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 # 입력 GUI구성
 running = True
 setting = True
-scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
+scene.caption = "\nOrbital inclination         Altitude            Orbits Number    Satellites Number    Max Transfer distance                                  Source                Destination\n\n"
 
 
 
@@ -390,21 +390,30 @@ def Dst(d):
 
 
 n = winput(bind=Inc, width=120, type="numeric")
+scene.append_to_caption('    ')
 i = winput(bind=Alt, width=120, type="numeric")
+scene.append_to_caption('    ')
 o = winput(bind=OrbNum, width=120, type="numeric")
+scene.append_to_caption('    ')
 s = winput(bind=SatNum, width=120, type="numeric")
+scene.append_to_caption('        ')
 m = winput(bind=MaxDist, width=120, type="numeric")
+scene.append_to_caption('        ')
 button(text="Set", bind=Set)
+scene.append_to_caption('    ')
 button(text="Run", bind=Run)
+scene.append_to_caption('    ')
 q = winput(bind=Src, width=120, type="string")
+scene.append_to_caption('    ')
 d = winput(bind=Dst, width=120, type="string")
+scene.append_to_caption('    ')
 button(text="Route", bind=Route)
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     orbits = []
-    if int(math.degrees(inc)) is 90:
+    if int(math.degrees(inc)) == 90:
         for i in range(int(orbitNum / 2)):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     else:
