@@ -2,12 +2,13 @@
 import time
 import numpy as np
 import vpython
-
 'Web VPython 3.2'
 from vpython import *
 import pyautogui
 import math
+# 라우팅 시뮬레이터 관련
 from minimum_deflection_angle import *
+import random
 import threading
 
 # 상수선언
@@ -229,6 +230,57 @@ class Network:
         })
 
 
+class RoutingSimulator:
+    network = None
+
+    def __init__(self):
+        self.network = Network()
+
+    def one_by_one_simulate(self):
+        a = Src(q)
+        b = Dst(d)
+        s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
+        e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
+        self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+        # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+
+    def random_N_by_one_simulation(self, count):
+        array_of_random_orbit = np.random.randint(0, orbitNum, size=count+1)
+        array_of_random_sat = np.random.randint(0, satNum, size=count+1)
+
+    def show_result_to_GUI(self):
+        for i in range(len(self.network.log)):
+            if len(self.network.log) > 1:
+                for j in self.network.log[i - 1]["path"]:
+                    j.sat_attr.color = color.white
+                    j.sat_attr.radius = 60
+                for j in distance_circles:
+                    j.visible = False
+            for j in self.network.log[i]["path"]:
+                j.sat_attr.color = color.cyan
+                j.sat_attr.radius = 120
+                draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+
+    def reset_GUI(self):
+        for i in range(len(self.network.log)):
+            for j in self.network.log[i - 1]["path"]:
+                j.sat_attr.color = color.white
+                j.sat_attr.radius = 60
+            for j in distance_circles:
+                j.visible = False
+
+    def print_log(self):
+        print("============log details============")
+        print("packt_ID       delay(ms)         path")
+        packet_idx = 0
+        for i in self.network.log:
+            print(packet_idx, "            ", i["delay"], "        ", end="[")
+            for j in i["path"][:-1]:
+                print(j.id, end="->")
+            print(i["path"][-1].id + "]")
+            packet_idx += 1
+
+
 def get_perpendicular_vector(point_coordinates):
     point_coordinates = (point_coordinates.x, point_coordinates.y, point_coordinates.z)
     point_vector = np.array(point_coordinates, dtype=float)
@@ -249,7 +301,7 @@ def draw_max_distance_circle(node_position, max_distance):
 
 def refresh_max_distance_circle():
     for r in range(len(distance_circles)):
-        distance_circles[r].pos = network.log[0]["path"][r].sat_attr.pos
+        distance_circles[r].pos = RoutingSimulator.network.log[0]["path"][r].sat_attr.pos
 
 
 def Inc(i):
@@ -292,7 +344,7 @@ def Run(r):
 
 def Route(t):
     t.text = "Routing"
-    network_simulator_thread.start()
+    # network_simulator_thread.start()
     t.text = "Route"
 
 
@@ -314,51 +366,6 @@ def deploy(inc, axis, color):
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     constellations.append(orbits)
-
-
-class RoutingSimulator:
-    def __init__(self):
-        self.network = Network()
-
-    def simulate(self, src_count, dest_count):
-        a = Src(q)
-        b = Dst(d)
-        s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
-        e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
-        self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
-        # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
-
-    def show_result_to_GUI(self):
-        for i in range(len(self.network.log)):
-            if len(self.network.log) > 1:
-                for j in self.network.log[i - 1]["path"]:
-                    j.sat_attr.color = color.white
-                    j.sat_attr.radius = 60
-                for j in distance_circles:
-                    j.visible = False
-            for j in self.network.log[i]["path"]:
-                j.sat_attr.color = color.cyan
-                j.sat_attr.radius = 120
-                draw_max_distance_circle(j.sat_attr.pos, maxDistance)
-
-    def reset_GUI(self):
-        for i in range(len(network.log)):
-            for j in network.log[i - 1]["path"]:
-                j.sat_attr.color = color.white
-                j.sat_attr.radius = 60
-            for j in distance_circles:
-                j.visible = False
-
-    def print_log(self):
-        print("============log details============")
-        print("packt_ID       delay(ms)         path")
-        packet_idx = 0
-        for i in network.log:
-            print(packet_idx, "            ", i["delay"], "        ", end="[")
-            for j in i["path"][:-1]:
-                print(j.id, end="->")
-            print(i["path"][-1].id + "]")
-            packet_idx += 1
 
 
 # 클래스 끝, 메인 로직 시작
@@ -407,8 +414,7 @@ button(text="Route", bind=Route)
 
 # 메인
 orbit_cnt = 0
-network = Network()
-network_simulator_thread = threading.Thread(target=routing_simulation)
+simulator = RoutingSimulator()
 
 while 1:
 
