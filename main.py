@@ -17,7 +17,7 @@ CONST_EARTH_RADIUS = 6371  # 지구반경
 # CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
-CONST_SAT_DT = math.radians(1)  # 위성 공전 각도
+CONST_SAT_DT = math.radians(5)  # 위성 공전 각도
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
@@ -300,7 +300,7 @@ def Dst(d):
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     orbits = []
-    if int(math.degrees(inc)) is 90:
+    if int(math.degrees(inc)) == 90:
         for i in range(int(orbitNum / 2)):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     else:
