@@ -232,19 +232,26 @@ class Network:
 
 class RoutingSimulator:
     network = None
+    worker = []
 
     def __init__(self):
         self.network = Network()
 
-    def one_by_one_simulate(self):
+    def one_to_one(self):
+        thread = threading.Thread(target=self.one_to_one_simulate)
+        thread.start()
+
+    def one_to_one_simulate(self):
         a = Src(q)
         b = Dst(d)
         s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
         e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
         self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
         # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+        self.show_result_to_GUI()
+        self.print_log()
 
-    def random_N_by_one_simulation(self, count):
+    def random_N_to_one_simulation(self, count):
         array_of_random_orbit = np.random.randint(0, orbitNum, size=count+1)
         array_of_random_sat = np.random.randint(0, satNum, size=count+1)
 
@@ -344,7 +351,7 @@ def Run(r):
 
 def Route(t):
     t.text = "Routing"
-    # network_simulator_thread.start()
+    simulator.one_to_one()
     t.text = "Route"
 
 
