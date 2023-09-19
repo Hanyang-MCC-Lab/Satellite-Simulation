@@ -2,6 +2,7 @@
 import time
 import numpy as np
 import vpython
+
 'Web VPython 3.2'
 from vpython import *
 import pyautogui
@@ -129,7 +130,7 @@ class Satellite:
         # 위도, 경도
         self.latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly))
         self.longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly),
-                          math.cos(self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending
+                                     math.cos(self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending
         # ECEF 좌표
         self.x = math.cos(self.latitude) * math.cos(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
@@ -234,7 +235,8 @@ def get_perpendicular_vector(point_coordinates):
 
     perpendicular_vector = np.array([1.0, 0.0, 0.0], dtype=float)
 
-    perpendicular_vector -= np.dot(perpendicular_vector, point_vector) / np.dot(point_vector, point_vector) * point_vector
+    perpendicular_vector -= np.dot(perpendicular_vector, point_vector) / np.dot(point_vector,
+                                                                                point_vector) * point_vector
 
     perpendicular_vector /= np.linalg.norm(perpendicular_vector)
     perpendicular_vector = vector(perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2])
@@ -244,9 +246,11 @@ def get_perpendicular_vector(point_coordinates):
 def draw_max_distance_circle(node_position, max_distance):
     distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
 
+
 def refresh_max_distance_circle():
-    for r in range (len(distance_circles)):
+    for r in range(len(distance_circles)):
         distance_circles[r].pos = network.log[0]["path"][r].sat_attr.pos
+
 
 def Inc(i):
     return i.number
@@ -285,13 +289,16 @@ def Run(r):
     else:
         r.text = "Runnning"
 
+
 def Route(t):
     t.text = "Routing"
     network_simulator_thread.start()
     t.text = "Route"
 
+
 def Src(q):
     return q.text
+
 
 def Dst(d):
     return d.text
@@ -308,47 +315,51 @@ def deploy(inc, axis, color):
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     constellations.append(orbits)
 
-def routing_simulation():
-    print("routing simulation")
-    more = 'y'
-    while (more == 'y' or more == 'Y') and (len(Src(q))+len(Dst(d)) >= 6):
-        if orbit_cnt > 0:
-            a = Src(q)
-            b = Dst(d)
-            s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
-            e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
-            network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
-            # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
 
-            for i in range(len(network.log)):
-                if len(network.log) > 1:
-                    for j in network.log[i - 1]["path"]:
-                        j.sat_attr.color = color.white
-                        j.sat_attr.radius = 60
-                    for j in distance_circles:
-                        j.visible = False
-                for j in network.log[i]["path"]:
-                    j.sat_attr.color = color.cyan
-                    j.sat_attr.radius = 120
-                    draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+class RoutingSimulator:
+    def __init__(self):
+        self.network = Network()
 
+    def simulate(self, src_count, dest_count):
+        a = Src(q)
+        b = Dst(d)
+        s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
+        e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
+        self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+        # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
 
-            print("============log details============")
-            print("packt_ID       delay(ms)         path")
-            packet_idx = 0
-            for i in network.log:
-                print(packet_idx, "            ", i["delay"], "        ", end="[")
-                for j in i["path"][:-1]:
-                    print(j.id, end="->")
-                print(i["path"][-1].id + "]")
-                packet_idx += 1
-            more = input("more test? [y/n]")
-    for i in range(len(network.log)):
-        for j in network.log[i - 1]["path"]:
-            j.sat_attr.color = color.white
-            j.sat_attr.radius = 60
-        for j in distance_circles:
-            j.visible = False
+    def show_result_to_GUI(self):
+        for i in range(len(self.network.log)):
+            if len(self.network.log) > 1:
+                for j in self.network.log[i - 1]["path"]:
+                    j.sat_attr.color = color.white
+                    j.sat_attr.radius = 60
+                for j in distance_circles:
+                    j.visible = False
+            for j in self.network.log[i]["path"]:
+                j.sat_attr.color = color.cyan
+                j.sat_attr.radius = 120
+                draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+
+    def reset_GUI(self):
+        for i in range(len(network.log)):
+            for j in network.log[i - 1]["path"]:
+                j.sat_attr.color = color.white
+                j.sat_attr.radius = 60
+            for j in distance_circles:
+                j.visible = False
+
+    def print_log(self):
+        print("============log details============")
+        print("packt_ID       delay(ms)         path")
+        packet_idx = 0
+        for i in network.log:
+            print(packet_idx, "            ", i["delay"], "        ", end="[")
+            for j in i["path"][:-1]:
+                print(j.id, end="->")
+            print(i["path"][-1].id + "]")
+            packet_idx += 1
+
 
 # 클래스 끝, 메인 로직 시작
 
@@ -394,7 +405,6 @@ q = winput(bind=Src, width=120, type="string")
 d = winput(bind=Dst, width=120, type="string")
 button(text="Route", bind=Route)
 
-
 # 메인
 orbit_cnt = 0
 network = Network()
@@ -426,4 +436,3 @@ while 1:
         sleep(0.1)
         if running == True:
             break
-
