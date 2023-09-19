@@ -25,8 +25,6 @@ CONST_COLORS = [v.red, v.blue, v.green, v.white]
 class Orbit:
     # 궤도 객체의 attribute
     id = "ORBIT-"
-    # # 궤도가 가진 위성 객체 (22개)
-    # satellites = []
     # 궤도 요소
     semi_major_axis = 6371  # km
     inclination = 0
@@ -143,33 +141,6 @@ class Satellite:
             self.state = 'up'
         else:
             self.state = 'down'
-    # 이전 라우팅 알고리즘
-    # def find_proper(self, cur_info, horizontal, vertical):
-    #     proper_sat = self
-    #     right, left = ((cur_info["orbit"] + 1) + orbitNum) % orbitNum, ((cur_info["orbit"] - 1) + orbitNum) % orbitNum
-    #     up, down = ((cur_info["satellite"] + 1) + satNum) % satNum, ((cur_info["satellite"] - 1) + satNum) % satNum
-    #     if vertical > 0:
-    #         if horizontal > 0:  # 위로, 동으로
-    #             proper_sat = self.orbit.orbits[right].satellites[up]
-    #         elif horizontal < 0:  # 위로, 서로
-    #             proper_sat = self.orbit.orbits[left].satellites[up]
-    #         else:  # 위로
-    #             proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[up]
-    #
-    #     elif vertical < 0:
-    #         if horizontal > 0:  # 아래로, 동으로
-    #             proper_sat = self.orbit.orbits[right].satellites[down]
-    #         elif horizontal < 0:  # 아래로, 서로
-    #             proper_sat = self.orbit.orbits[left].satellites[down]
-    #         else:  # 아래로
-    #             proper_sat = self.orbit.orbits[cur_info["orbit"]].satellites[down]
-    #     else:
-    #         if horizontal > 0:  # 동으로
-    #             proper_sat = self.orbit.orbits[right].satellites[cur_info["satellite"]]
-    #         else:  # 서로
-    #             proper_sat = self.orbit.orbits[left].satellites[cur_info["satellite"]]
-    #
-    #     return proper_sat
 
     def get_great_distance(self, node_A, node_B):
         radius = CONST_EARTH_RADIUS + node_A.get_llh_info()['alt']
@@ -197,8 +168,6 @@ class Satellite:
         print("current sat:", self.id)
         print("available list is")
         for i in range(len(available_list)):
-            # print("available_list[i]",available_list[i])
-            # print("dest",dest)
             if available_list[i].id == dest.id:
                 return i
             dist = self.get_great_distance(available_list[i], dest)
@@ -232,25 +201,6 @@ class Satellite:
             # sleep(1)
             return available_list[index_of_next_hop].transfer(destination, path)
 
-            # 이전 알고리즘 : 8방향
-            # west_distance = ((cur_info["orbit"] - dest_info["orbit"]) + orbitNum) % orbitNum
-            # east_distance = ((dest_info["orbit"] - cur_info["orbit"]) + orbitNum) % orbitNum
-            # # print("west, east distance:", west_distance, east_distance)
-            # if west_distance <= east_distance and west_distance != 0:
-            #     horizontal = -1
-            # elif west_distance > east_distance:
-            #     horizontal = 1
-            #
-            # south_distance = ((cur_info["satellite"] - dest_info["satellite"]) + satNum) % satNum
-            # north_distance = ((dest_info["satellite"] - cur_info["satellite"]) + satNum) % satNum
-            # # print("north, south distance:", north_distance, south_distance)
-            # if north_distance <= south_distance and north_distance != 0:
-            #     vertical = 1
-            # elif north_distance > south_distance:
-            #     vertical = -1
-            # # print("horizontal, vertical:", horizontal, vertical)
-            # return get_proper(cur_info, dest_info, available_list).transfer(destination, path)
-
 
 class Network:
     def __init__(self):
@@ -269,50 +219,13 @@ class Network:
         return distance / 3.0e8
 
     def routing(self, start: Satellite, dest: Satellite):
-        # start_time = time.perf_counter()
         path = start.transfer(dest, [])
-        # finish_time = time.perf_counter()
-        # delay = finish_time - start_time
         delay = self.get_delay(start, dest)
         self.log.append({
             "packet": "Packet-" + start.id + "To" + dest.id,
             "delay": round(delay * 1000, 6),
             "path": path,
         })
-
-# 클래스 끝, 메인 로직 시작
-
-# 궤도 및 위성 리스트 생성
-constellations = []
-distance_circles = []
-
-# 모니터 해상도에 따라 능동적인 해상도 조절
-M_size = pyautogui.size()
-monitor_width = M_size[0]
-monitor_height = M_size[1] - 100
-
-# 씬 구성
-# 기준 춘분점(Reference direction vector = (0, 0, 1))
-scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
-scene.resizable = False
-
-# xy평면과 x, y, z축 pos=vec(y방향, z방향, x방향)
-mybox = box(pos=vec(0, 0, 0), length=30000, height=1, width=30000, opacity=0.5)
-lineX = arrow(pos=vec(-15000, 0, 0), axis=vec(1, 0, 0), shaftwidth=50, headwidth=300, headlength=300, length=30000,
-              color=color.magenta)
-lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth=300, headlength=300, length=30000,
-              color=color.blue)
-lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
-              color=color.green)
-t3 = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
-          color=color.cyan, billboard=True, emissive=True, depth=0.15)
-earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
-
-# 입력 GUI구성
-running = True
-setting = True
-scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
-
 
 
 def get_perpendicular_vector(point_coordinates):
@@ -326,11 +239,6 @@ def get_perpendicular_vector(point_coordinates):
     perpendicular_vector /= np.linalg.norm(perpendicular_vector)
     perpendicular_vector = vector(perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2])
     return perpendicular_vector
-
-# def draw_max_distance_circle(node_position, max_distance):
-#     perpendicular_vector = get_perpendicular_vector(node_position)
-#     # Create a ring in the XY plane (z=0) with the specified radius
-#     ring(pos=node_position, axis=perpendicular_vector, radius=max_distance, thickness=30, color=color.green, opacity=0.3)
 
 
 def draw_max_distance_circle(node_position, max_distance):
@@ -389,18 +297,6 @@ def Dst(d):
     return d.text
 
 
-n = winput(bind=Inc, width=120, type="numeric")
-i = winput(bind=Alt, width=120, type="numeric")
-o = winput(bind=OrbNum, width=120, type="numeric")
-s = winput(bind=SatNum, width=120, type="numeric")
-m = winput(bind=MaxDist, width=120, type="numeric")
-button(text="Set", bind=Set)
-button(text="Run", bind=Run)
-q = winput(bind=Src, width=120, type="string")
-d = winput(bind=Dst, width=120, type="string")
-button(text="Route", bind=Route)
-
-
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     orbits = []
@@ -411,21 +307,6 @@ def deploy(inc, axis, color):
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     constellations.append(orbits)
-
-    # 계산로직
-    # orbit.append(ring(pos=vec(0, 0, 0),
-    #                   #궤도경사 회전 및 궤도 축 회전
-    #                   axis=vec(math.cos(orbitRot * i) * 0 - math.sin(orbitRot * i) * math.sin(inclination),
-    #                            math.cos(inclination),
-    #                            math.sin(orbitRot * i) * 0 + math.cos(orbitRot * i) * math.sin(inclination)),
-    #                   radius=CONST_ORBIT_RADIUS, color=color.red, thickness=15))
-    #
-    # for j in range(satNum): #위성생성
-    #                         #궤도경사 회전 및 궤도 축 회전 및 궤도회전
-    #     sat.append(sphere(pos=vec(math.cos(orbitRot * i) * math.cos(satRot * j) * CONST_ORBIT_RADIUS - math.sin(orbitRot * i) * math.cos(inclination) * math.sin(satRot * j) * CONST_ORBIT_RADIUS,
-    #                               0 - math.sin(inclination) * math.sin(satRot * j) * CONST_ORBIT_RADIUS,
-    #                               math.sin(orbitRot * i) * math.cos(satRot * j) * CONST_ORBIT_RADIUS + math.cos(orbitRot * i) * math.cos(inclination) * math.sin(satRot * j) * CONST_ORBIT_RADIUS),
-    #                       axis=vec(1, 0, 0), radius=60, color=color.white))
 
 def routing_simulation():
     print("routing simulation")
@@ -468,6 +349,51 @@ def routing_simulation():
             j.sat_attr.radius = 60
         for j in distance_circles:
             j.visible = False
+
+# 클래스 끝, 메인 로직 시작
+
+# 궤도 및 위성 리스트 생성
+constellations = []
+distance_circles = []
+
+# 모니터 해상도에 따라 능동적인 해상도 조절
+M_size = pyautogui.size()
+monitor_width = M_size[0]
+monitor_height = M_size[1] - 100
+
+# 씬 구성
+# 기준 춘분점(Reference direction vector = (0, 0, 1))
+scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
+scene.resizable = False
+
+# xy평면과 x, y, z축 pos=vec(y방향, z방향, x방향)
+mybox = box(pos=vec(0, 0, 0), length=30000, height=1, width=30000, opacity=0.5)
+lineX = arrow(pos=vec(-15000, 0, 0), axis=vec(1, 0, 0), shaftwidth=50, headwidth=300, headlength=300, length=30000,
+              color=color.magenta)
+lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth=300, headlength=300, length=30000,
+              color=color.blue)
+lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
+              color=color.green)
+t3 = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
+          color=color.cyan, billboard=True, emissive=True, depth=0.15)
+earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
+
+# 입력 GUI구성
+running = True
+setting = True
+scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
+
+n = winput(bind=Inc, width=120, type="numeric")
+i = winput(bind=Alt, width=120, type="numeric")
+o = winput(bind=OrbNum, width=120, type="numeric")
+s = winput(bind=SatNum, width=120, type="numeric")
+m = winput(bind=MaxDist, width=120, type="numeric")
+button(text="Set", bind=Set)
+button(text="Run", bind=Run)
+q = winput(bind=Src, width=120, type="string")
+d = winput(bind=Dst, width=120, type="string")
+button(text="Route", bind=Route)
+
 
 # 메인
 orbit_cnt = 0
