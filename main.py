@@ -233,6 +233,7 @@ class Network:
 class RoutingSimulator:
     network = None
     worker = []
+    randomSatList = []
 
     def __init__(self):
         self.network = Network()
@@ -254,6 +255,15 @@ class RoutingSimulator:
     def random_N_to_one_simulation(self, count):
         array_of_random_orbit = np.random.randint(0, orbitNum, size=count+1)
         array_of_random_sat = np.random.randint(0, satNum, size=count+1)
+        for i in count+1:
+            self.randomSatList.append = constellations[0][array_of_random_orbit].satellites[array_of_random_sat]
+        random.shuffle(array_of_random_orbit)
+        random.shuffle(array_of_random_sat)
+        for j in count: #다중 라우팅 병렬처리
+            thread2 = threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[count+1]))
+            thread2.start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
+        self.show_result_to_GUI()
+        self.print_log()
 
     def show_result_to_GUI(self):
         for i in range(len(self.network.log)):
@@ -362,6 +372,9 @@ def Src(q):
 def Dst(d):
     return d.text
 
+def Mto1(r):
+    return r.text
+
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
@@ -417,6 +430,7 @@ button(text="Set", bind=Set)
 button(text="Run", bind=Run)
 q = winput(bind=Src, width=120, type="string")
 d = winput(bind=Dst, width=120, type="string")
+r = winput(bind=Mto1, width=120, type="string")
 button(text="Route", bind=Route)
 
 # 메인
