@@ -234,9 +234,11 @@ class RoutingSimulator:
     network = None
     worker = []
     randomSatList = []
+    parallelProcess = []
 
     def __init__(self):
         self.network = Network()
+        self.random_N_to_one_simulation(r)
 
     def one_to_one(self):
         thread = threading.Thread(target=self.one_to_one_simulate)
@@ -260,8 +262,8 @@ class RoutingSimulator:
         random.shuffle(array_of_random_orbit)
         random.shuffle(array_of_random_sat)
         for j in count: #다중 라우팅 병렬처리
-            thread2 = threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[count+1]))
-            thread2.start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
+            self.parallelProcess.append = threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[count+1]))
+            self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
         self.show_result_to_GUI()
         self.print_log()
 
