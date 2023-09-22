@@ -184,6 +184,9 @@ class Satellite:
                         available_list_ecef.append(hop.get_ecef_info())
             # 최적 위성 탐색
             next_hop = algorithms.MDD(self, destination, available_list)
+            # next_hop = algorithms.MDA(self, destination, available_list)
+            # next_hop = algorithms.TEW(self, destination, available_list)
+
             # print("next hop is", available_list[index_of_next_hop].id)
             # sleep(1)
             return next_hop.transfer(destination, path)
