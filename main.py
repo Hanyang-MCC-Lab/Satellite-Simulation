@@ -370,9 +370,11 @@ def Route(t):
 def Src(q):
     return q.text
 
-
 def Dst(d):
     return d.text
+
+def Count(c):
+    return c.text
 
 def Mto1(r):
     return r.text
@@ -434,6 +436,7 @@ q = winput(bind=Src, width=120, type="string")
 d = winput(bind=Dst, width=120, type="string")
 r = winput(bind=Mto1, width=120, type="string")
 button(text="Route", bind=Route)
+count = winput(bind=Count, width=120, type="numeric")
 
 # 메인
 orbit_cnt = 0
