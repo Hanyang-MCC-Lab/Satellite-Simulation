@@ -10,7 +10,7 @@ import math
 from minimum_deflection_angle import *
 import random
 import threading
-
+import algorithms
 # 상수선언
 orbitNum = 72
 satNum = 22
@@ -164,44 +164,29 @@ class Satellite:
         distance = radius * c
         return distance
 
-    def get_proper2(self, dest, available_list):
-        smallest_distance = float('inf')
-        index_of_point_with_smallest_distance = None
-        print("current sat:", self.id)
-        print("available list is")
-        for i in range(len(available_list)):
-            if available_list[i].id == dest.id:
-                return i
-            dist = self.get_great_distance(available_list[i], dest)
-            print(available_list[i].id, "  distance:", dist)
-            if dist < smallest_distance and dist > 100:
-                smallest_distance = dist
-                index_of_point_with_smallest_distance = i
-        print("====================================")
-
-        return index_of_point_with_smallest_distance
 
     def transfer(self, destination, path):
-        print("packet is in", self.id)
+        # print("packet is in", self.id)
         # sleep(1)
         path.append(self)
         if destination.id == self.id:
             return path
         else:
-            dest_info = destination.get_ecef_info()
             cur_info = self.get_ecef_info()
             available_list = []
             available_list_ecef = []
+            # 통신 가능 위성 취합 => available list
             for orb in constellations[0]:
                 for hop in orb.satellites:
                     # and (hop.orbit or self.state == hop.state) 인클 디클 고려 조건
                     if hop != self and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
                         available_list.append(hop)
                         available_list_ecef.append(hop.get_ecef_info())
-            index_of_next_hop = self.get_proper2(destination, available_list)
-            print("next hop is", available_list[index_of_next_hop].id)
+            # 최적 위성 탐색
+            next_hop = algorithms.MDD(self, destination, available_list)
+            # print("next hop is", available_list[index_of_next_hop].id)
             # sleep(1)
-            return available_list[index_of_next_hop].transfer(destination, path)
+            return next_hop.transfer(destination, path)
 
 
 class Network:
@@ -232,17 +217,22 @@ class Network:
 
 class RoutingSimulator:
     network = None
-    worker = []
+    threads = []
     randomSatList = []
     parallelProcess = []
 
     def __init__(self):
         self.network = Network()
-        self.random_N_to_one_simulation(r)
+        # self.random_N_to_one_simulation(r)
 
     def one_to_one(self):
         thread = threading.Thread(target=self.one_to_one_simulate)
         thread.start()
+        # 종료까지 blocking
+        thread.join()
+        # 종료후 결과 표출
+        self.show_result_to_GUI()
+        self.print_log()
 
     def one_to_one_simulate(self):
         a = Src(q)
@@ -251,20 +241,26 @@ class RoutingSimulator:
         e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
         self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
         # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
-        self.show_result_to_GUI()
-        self.print_log()
 
-    def random_N_to_one_simulation(self, count):
-        array_of_random_orbit = np.random.randint(0, orbitNum, size=count+1)
-        array_of_random_sat = np.random.randint(0, satNum, size=count+1)
-        for i in count+1:
-            self.randomSatList.append = constellations[0][array_of_random_orbit].satellites[array_of_random_sat]
-        random.shuffle(array_of_random_orbit)
-        random.shuffle(array_of_random_sat)
-        for j in count: #다중 라우팅 병렬처리
-            self.parallelProcess.append = threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[count+1]))
-            self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
-        self.show_result_to_GUI()
+
+    def random_N_to_one_simulation(self, N):
+        # 출발지 N개 + 도착지 1개의 위성에 대한 랜덤 정수 배열 생성
+        random_orbits = np.random.randint(0, orbitNum, size=N+1)
+        random_sats = np.random.randint(0, satNum, size=N+1)
+        # 궤도, 위성번호의 맨 끝을 도착지로 정의
+        dest_orbit, dest_sat = random_orbits[-1], random_sats[-1]
+        # 다중 라우팅 병렬처리
+        for i in range(N):
+            self.threads.append = threading.Thread(target=self.network.routing,
+                                                   args=(
+                                                       constellations[0][random_orbits[i]].satellites[random_sats[i]],
+                                                       constellations[0][dest_orbit].satellites[dest_sat])
+                                                   )
+        for i in self.threads:
+            i.start()
+        for i in self.threads:
+            i.join()
+        # self.show_result_to_GUI()
         self.print_log()
 
     def show_result_to_GUI(self):
