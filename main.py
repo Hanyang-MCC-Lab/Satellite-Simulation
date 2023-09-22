@@ -217,13 +217,12 @@ class Network:
 
 class RoutingSimulator:
     network = None
-    threads = []
+    worker = []
     randomSatList = []
     parallelProcess = []
 
     def __init__(self):
         self.network = Network()
-        # self.random_N_to_one_simulation(r)
 
     def one_to_one(self):
         thread = threading.Thread(target=self.one_to_one_simulate)
@@ -242,26 +241,19 @@ class RoutingSimulator:
         self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
         # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
 
+    def random_N_to_one_simulation(self, count):
+        for i in range(int(count)+1):
+            random_orbit = np.random.randint(0, orbitNum)
+            random_sat = np.random.randint(0, satNum)
+            self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
+        random.shuffle(self.randomSatList)
+        for k in range(int(count)+1):
+            print(self.randomSatList[k])
+        for j in range(int(count)): #다중 라우팅 병렬처리
+            self.parallelProcess.append(threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[int(count)])))
+            self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
+        self.show_result_to_GUI()
 
-    def random_N_to_one_simulation(self, N):
-        # 출발지 N개 + 도착지 1개의 위성에 대한 랜덤 정수 배열 생성
-        random_orbits = np.random.randint(0, orbitNum, size=N+1)
-        random_sats = np.random.randint(0, satNum, size=N+1)
-        # 궤도, 위성번호의 맨 끝을 도착지로 정의
-        dest_orbit, dest_sat = random_orbits[-1], random_sats[-1]
-        # 다중 라우팅 병렬처리
-        for i in range(N):
-            self.threads.append = threading.Thread(target=self.network.routing,
-                                                   args=(
-                                                       constellations[0][random_orbits[i]].satellites[random_sats[i]],
-                                                       constellations[0][dest_orbit].satellites[dest_sat])
-                                                   )
-        for i in self.threads:
-            i.start()
-        for i in self.threads:
-            i.join()
-        # self.show_result_to_GUI()
-        self.print_log()
 
     def show_result_to_GUI(self):
         for i in range(len(self.network.log)):
@@ -359,19 +351,21 @@ def Run(r):
 
 def Route(t):
     t.text = "Routing"
-    simulator.one_to_one()
+    simulator.random_N_to_one_simulation(Count(cont))
     t.text = "Route"
 
 
 def Src(q):
     return q.text
 
-
 def Dst(d):
     return d.text
 
-def Mto1(r):
-    return r.text
+def Count(c):
+    return c.text
+
+def Mto1(cont):
+    return cont.text
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -428,7 +422,7 @@ button(text="Set", bind=Set)
 button(text="Run", bind=Run)
 q = winput(bind=Src, width=120, type="string")
 d = winput(bind=Dst, width=120, type="string")
-r = winput(bind=Mto1, width=120, type="string")
+cont = winput(bind=Mto1, width=120, type="numeric")
 button(text="Route", bind=Route)
 
 # 메인
