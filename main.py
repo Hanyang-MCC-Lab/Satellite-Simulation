@@ -238,7 +238,6 @@ class RoutingSimulator:
 
     def __init__(self):
         self.network = Network()
-        self.random_N_to_one_simulation(r)
 
     def one_to_one(self):
         thread = threading.Thread(target=self.one_to_one_simulate)
@@ -255,14 +254,15 @@ class RoutingSimulator:
         self.print_log()
 
     def random_N_to_one_simulation(self, count):
-        array_of_random_orbit = np.random.randint(0, orbitNum, size=count+1)
-        array_of_random_sat = np.random.randint(0, satNum, size=count+1)
-        for i in count+1:
-            self.randomSatList.append = constellations[0][array_of_random_orbit].satellites[array_of_random_sat]
-        random.shuffle(array_of_random_orbit)
-        random.shuffle(array_of_random_sat)
-        for j in count: #다중 라우팅 병렬처리
-            self.parallelProcess.append = threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[count+1]))
+        for i in range(int(count)+1):
+            random_orbit = np.random.randint(0, orbitNum)
+            random_sat = np.random.randint(0, satNum)
+            self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
+        random.shuffle(self.randomSatList)
+        for k in range(int(count)+1):
+            print(self.randomSatList[k])
+        for j in range(int(count)): #다중 라우팅 병렬처리
+            self.parallelProcess.append(threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[int(count)])))
             self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
         self.show_result_to_GUI()
         self.print_log()
@@ -363,7 +363,7 @@ def Run(r):
 
 def Route(t):
     t.text = "Routing"
-    simulator.one_to_one()
+    simulator.random_N_to_one_simulation(Count(cont))
     t.text = "Route"
 
 
@@ -376,8 +376,8 @@ def Dst(d):
 def Count(c):
     return c.text
 
-def Mto1(r):
-    return r.text
+def Mto1(cont):
+    return cont.text
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -434,9 +434,8 @@ button(text="Set", bind=Set)
 button(text="Run", bind=Run)
 q = winput(bind=Src, width=120, type="string")
 d = winput(bind=Dst, width=120, type="string")
-r = winput(bind=Mto1, width=120, type="string")
+cont = winput(bind=Mto1, width=120, type="numeric")
 button(text="Route", bind=Route)
-count = winput(bind=Count, width=120, type="numeric")
 
 # 메인
 orbit_cnt = 0
