@@ -255,7 +255,10 @@ class RoutingSimulator:
         for j in range(int(count)): #다중 라우팅 병렬처리
             self.parallelProcess.append(threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[int(count)])))
             self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
-        self.show_result_to_GUI()
+        for i in self.parallelProcess:
+            i.join()
+        self.parallelProcess.clear()
+        self.print_log()
 
 
     def show_result_to_GUI(self):
