@@ -250,12 +250,27 @@ class RoutingSimulator:
             random_sat = np.random.randint(0, satNum)
             self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
         random.shuffle(self.randomSatList)
-        for k in range(int(count)+1):
+        for k in range(int(count)+1): #디버깅용
             print(self.randomSatList[k])
         for j in range(int(count)): #다중 라우팅 병렬처리
             self.parallelProcess.append(threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[int(count)])))
             self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
         self.show_result_to_GUI()
+        self.print_log()
+
+    def random_N_to_M_simulation(self, count):
+        for i in range(int(count)*2):
+            random_orbit = np.random.randint(0, orbitNum)
+            random_sat = np.random.randint(0, satNum)
+            self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
+        random.shuffle(self.randomSatList)
+        for k in range(int(count)*2): #디버깅용
+            print(self.randomSatList[k])
+        for j in range(int(count)): #다중 라우팅 병렬처리
+            self.parallelProcess.append(threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[int(count)+j])))
+            self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
+        self.show_result_to_GUI()
+        self.print_log()
 
 
     def show_result_to_GUI(self):
@@ -311,7 +326,7 @@ def draw_max_distance_circle(node_position, max_distance):
 
 def refresh_max_distance_circle():
     for r in range(len(distance_circles)):
-        distance_circles[r].pos = RoutingSimulator.network.log[0]["path"][r].sat_attr.pos
+        distance_circles[r].pos = simulator.network.log[0]["path"][r].sat_attr.pos
 
 
 def Inc(i):
@@ -354,7 +369,7 @@ def Run(r):
 
 def Route(t):
     t.text = "Routing"
-    simulator.random_N_to_one_simulation(Count(cont))
+    simulator.random_N_to_M_simulation(Count(cont))
     t.text = "Route"
 
 
@@ -454,7 +469,7 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
-                    refresh_max_distance_circle()
+                    #refresh_max_distance_circle()
         sleep(0.1)
         if running == True:
             break
