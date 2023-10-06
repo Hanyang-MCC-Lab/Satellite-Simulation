@@ -282,7 +282,12 @@ class RoutingSimulator:
             for j in distance_circles:
                 j.visible = False
         for i in self.network.log[index]["path"]:
-            i.sat_attr.color = color.cyan
+            if self.network.log[index]["path"].index(i) == 0:
+                i.sat_attr.color = color.orange
+            elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"])-1:
+                i.sat_attr.color = color.purple
+            else:
+                i.sat_attr.color = color.cyan
             i.sat_attr.radius = 120
             draw_max_distance_circle(i.sat_attr.pos, maxDistance)
 
@@ -439,7 +444,8 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 # 입력 GUI구성
 running = True
 setting = True
-scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
+scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of sources\n\n"
+# "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
 
 n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
@@ -448,11 +454,11 @@ s = winput(bind=SatNum, width=120, type="numeric")
 m = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
-q = winput(bind=Src, width=120, type="string")
-d = winput(bind=Dst, width=120, type="string")
+# q = winput(bind=Src, width=120, type="string")
+# d = winput(bind=Dst, width=120, type="string")
 cont = winput(bind=Mto1, width=120, type="numeric")
 button(text="Route", bind=Route)
-scene.append_to_caption("\n Routing result list  :  ")
+scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 # 메인
 orbit_cnt = 0
