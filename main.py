@@ -2,6 +2,7 @@
 import time
 import numpy as np
 import vpython
+
 'Web VPython 3.2'
 from vpython import *
 import pyautogui
@@ -11,6 +12,7 @@ from minimum_deflection_angle import *
 import random
 import threading
 import algorithms
+
 # 상수선언
 orbitNum = 72
 satNum = 22
@@ -164,7 +166,6 @@ class Satellite:
         distance = radius * c
         return distance
 
-
     def transfer(self, destination, path):
         # print("packet is in", self.id)
         # sleep(1)
@@ -245,34 +246,33 @@ class RoutingSimulator:
         # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
 
     def random_N_to_one_simulation(self, count):
-        for i in range(int(count)+1):
+        for i in range(int(count) + 1):
             random_orbit = np.random.randint(0, orbitNum)
             random_sat = np.random.randint(0, satNum)
             self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
         random.shuffle(self.randomSatList)
-        for k in range(int(count)+1):
+        for k in range(int(count) + 1):
             print(self.randomSatList[k])
-        for j in range(int(count)): #다중 라우팅 병렬처리
-            self.parallelProcess.append(threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[int(count)])))
-            self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
+        for j in range(int(count)):  # 다중 라우팅 병렬처리
+            self.parallelProcess.append(
+                threading.Thread(target=self.network.routing(self.randomSatList[j], self.randomSatList[int(count)])))
+            self.parallelProcess[j].start()  # 리스트 맨 마지막 위성으로 하나의 목적지 지정
         for i in self.parallelProcess:
             i.join()
         self.parallelProcess.clear()
         self.print_log()
 
-
-    def show_result_to_GUI(self):
+    def show_result_to_GUI(self, index):
         for i in range(len(self.network.log)):
-            if len(self.network.log) > 1:
-                for j in self.network.log[i - 1]["path"]:
-                    j.sat_attr.color = color.white
-                    j.sat_attr.radius = 60
-                for j in distance_circles:
-                    j.visible = False
             for j in self.network.log[i]["path"]:
-                j.sat_attr.color = color.cyan
-                j.sat_attr.radius = 120
-                draw_max_distance_circle(j.sat_attr.pos, maxDistance)
+                j.sat_attr.color = color.white
+                j.sat_attr.radius = 60
+            for j in distance_circles:
+                j.visible = False
+        for i in self.network.log[index]["path"]:
+            i.sat_attr.color = color.cyan
+            i.sat_attr.radius = 120
+            draw_max_distance_circle(i.sat_attr.pos, maxDistance)
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
@@ -359,19 +359,29 @@ def Route(t):
     t.text = "Routing"
     simulator.random_N_to_one_simulation(Count(cont))
     t.text = "Route"
-
+    log_list = []
+    for i in simulator.network.log:
+        log_list.append(i["packet"]+" (delay: "+str(i["delay"])+")")
+    routing_list_menu.choices = log_list
 
 def Src(q):
     return q.text
 
+
 def Dst(d):
     return d.text
+
 
 def Count(c):
     return c.text
 
+
 def Mto1(cont):
     return cont.text
+
+
+def chooseLog(m):
+    simulator.show_result_to_GUI(routing_list_menu.choices.index(m.selected))
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -430,7 +440,8 @@ q = winput(bind=Src, width=120, type="string")
 d = winput(bind=Dst, width=120, type="string")
 cont = winput(bind=Mto1, width=120, type="numeric")
 button(text="Route", bind=Route)
-
+scene.append_to_caption("\n Routing result list  :  ")
+routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 # 메인
 orbit_cnt = 0
 simulator = RoutingSimulator()
