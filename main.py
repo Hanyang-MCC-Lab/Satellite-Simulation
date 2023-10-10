@@ -333,6 +333,13 @@ def refresh_max_distance_circle():
     for r in range(len(distance_circles)):
         distance_circles[r].pos = simulator.network.log[0]["path"][r].sat_attr.pos
 
+def func_visible(r):
+    if r.checked:
+        for i in distance_circles:
+            i.opacity = 0.1
+    else:
+        for i in distance_circles:
+            i.opacity = 0
 
 def Inc(i):
     return i.number
@@ -460,6 +467,10 @@ cont = winput(bind=Mto1, width=120, type="numeric")
 button(text="Route", bind=Route)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
+scene.append_to_caption("\n\n connection visible")
+checkbox(bind=func_visible, checked=True) # text to right of checkbox
+
+
 # 메인
 orbit_cnt = 0
 simulator = RoutingSimulator()
