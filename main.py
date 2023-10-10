@@ -405,8 +405,8 @@ def chooseLog(m):
 def deploy(inc, axis, color):
     orbits = []
     if int(math.degrees(inc)) == 90:
-        for i in range(int(orbitNum / 2)):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
+        for i in range(orbitNum):  # 궤도생성
+            orbits.append(Orbit(i, inc, axis, (orbitRot * i)/2, color))
     else:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
@@ -454,7 +454,7 @@ s = winput(bind=SatNum, width=120, type="numeric")
 m = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
-# q = winput(bind=Src, width=120, type="string")
+# q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
 # d = winput(bind=Dst, width=120, type="string")
 cont = winput(bind=Mto1, width=120, type="numeric")
 button(text="Route", bind=Route)
