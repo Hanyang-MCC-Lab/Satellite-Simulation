@@ -451,7 +451,7 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 # 입력 GUI구성
 running = True
 setting = True
-scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of sources\n\n"
+scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
 # "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
 
 n = winput(bind=Inc, width=120, type="numeric")
