@@ -1,11 +1,8 @@
 'Python 3.9'
-import time
 import numpy as np
-import vpython
 'Web VPython 3.2'
 from vpython import *
 import pyautogui
-import math
 # 라우팅 시뮬레이터 관련
 from minimum_deflection_angle import *
 import random
@@ -16,7 +13,6 @@ orbitNum = 72
 satNum = 22
 maxDistance = 0
 CONST_EARTH_RADIUS = 6371  # 지구반경
-# CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
 CONST_SAT_DT = math.radians(5)  # 위성 공전 각도
@@ -54,11 +50,6 @@ class Orbit:
         for idx in range(satNum):
             sat = Satellite(self, idx, inclination, altitude, idx * satRot)
             self.satellites.append(sat)
-            # print(sat.id, "is appended in", self.id)
-            # 아래 코드 주석 해제하면 각 위성이 가진 ECEF, LLH좌표 확인가능
-            # print(sat.get_llh_info())
-            # print(sat.get_ecef_info())
-            # sleep(0.005)
 
     def get_orbit_info(self):
         info = {
@@ -168,8 +159,6 @@ class Satellite:
         return distance
 
     def transfer(self, destination, path):
-        # print("packet is in", self.id)
-        # sleep(1)
         path.append(self)
         if destination.id == self.id:
             return path
@@ -189,8 +178,6 @@ class Satellite:
             # next_hop = algorithms.MDA(self, destination, available_list)
             # next_hop = algorithms.TEW(self, destination, available_list)
 
-            # print("next hop is", available_list[index_of_next_hop].id)
-            # sleep(1)
             return next_hop.transfer(destination, path)
 
 
@@ -244,7 +231,6 @@ class RoutingSimulator:
         s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
         e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
         self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
-        # network.get_euc_distance(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
 
     def random_N_to_one_simulation(self, count):
         for i in range(int(count) + 1):
@@ -325,14 +311,6 @@ def get_perpendicular_vector(point_coordinates):
     perpendicular_vector = vector(perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2])
     return perpendicular_vector
 
-
-# def draw_max_distance_circle(node_position, max_distance):
-#     distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
-
-
-# def refresh_max_distance_circle():
-#     for r in range(len(distance_circles)):
-#         distance_circles[r].pos = simulator.network.log[0]["path"][r].sat_attr.pos
 
 def func_visible(r):
     if r.checked:
@@ -500,7 +478,6 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
-                    #refresh_max_distance_circle()
         sleep(0.1)
         if running == True:
             break
