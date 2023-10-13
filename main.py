@@ -82,6 +82,7 @@ class Satellite:
     # ECEF 좌표계상의 x, y, z좌표
     x, y, z = 0, 0, 0
     state = None
+    distance = None
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
@@ -98,11 +99,12 @@ class Satellite:
         self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 설정
         self.sat_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
-
+        # 상승/하강 상태
         if math.degrees(theta) >= 270 or math.degrees(theta) <= 90:
             self.state = 'up'
         else:
             self.state = 'down'
+        self.distance = sphere(pos=self.sat_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
 
     # 위성의 LLH를 GET하는 메소드, 다만 라디안으로 저장되어 있어 일반 degree로 변환이 필요함(지금은 안되어 있음)
     def get_llh_info(self):
@@ -143,6 +145,7 @@ class Satellite:
             self.state = 'up'
         else:
             self.state = 'down'
+        self.distance.pos = self.sat_attr.pos
 
     def get_great_distance(self, node_A, node_B):
         radius = CONST_EARTH_RADIUS + node_A.get_llh_info()['alt']
@@ -279,8 +282,7 @@ class RoutingSimulator:
             for j in self.network.log[i]["path"]:
                 j.sat_attr.color = color.white
                 j.sat_attr.radius = 60
-            for j in distance_circles:
-                j.visible = False
+                j.distance.visible = False
         for i in self.network.log[index]["path"]:
             if self.network.log[index]["path"].index(i) == 0:
                 i.sat_attr.color = color.orange
@@ -289,15 +291,14 @@ class RoutingSimulator:
             else:
                 i.sat_attr.color = color.cyan
             i.sat_attr.radius = 120
-            draw_max_distance_circle(i.sat_attr.pos, maxDistance)
+            i.distance.visible = True
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
             for j in self.network.log[i - 1]["path"]:
                 j.sat_attr.color = color.white
                 j.sat_attr.radius = 60
-            for j in distance_circles:
-                j.visible = False
+                j.distance.visible = False
 
     def print_log(self):
         print("============log details============")
@@ -325,21 +326,21 @@ def get_perpendicular_vector(point_coordinates):
     return perpendicular_vector
 
 
-def draw_max_distance_circle(node_position, max_distance):
-    distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
+# def draw_max_distance_circle(node_position, max_distance):
+#     distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
 
 
-def refresh_max_distance_circle():
-    for r in range(len(distance_circles)):
-        distance_circles[r].pos = simulator.network.log[0]["path"][r].sat_attr.pos
+# def refresh_max_distance_circle():
+#     for r in range(len(distance_circles)):
+#         distance_circles[r].pos = simulator.network.log[0]["path"][r].sat_attr.pos
 
 def func_visible(r):
     if r.checked:
-        for i in distance_circles:
-            i.opacity = 0.1
+        for i in simulator.network.log[menu_choice]["path"]:
+            i.distance.opacity = 0.1
     else:
-        for i in distance_circles:
-            i.opacity = 0
+        for i in simulator.network.log[menu_choice]["path"]:
+            i.distance.opacity = 0
 
 def Inc(i):
     return i.number
@@ -405,7 +406,9 @@ def Mto1(cont):
 
 
 def chooseLog(m):
-    simulator.show_result_to_GUI(routing_list_menu.choices.index(m.selected))
+    global menu_choice
+    menu_choice = routing_list_menu.choices.index(m.selected)
+    simulator.show_result_to_GUI(menu_choice)
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -424,7 +427,6 @@ def deploy(inc, axis, color):
 
 # 궤도 및 위성 리스트 생성
 constellations = []
-distance_circles = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
@@ -474,6 +476,7 @@ checkbox(bind=func_visible, checked=True) # text to right of checkbox
 # 메인
 orbit_cnt = 0
 simulator = RoutingSimulator()
+menu_choice = 0
 
 while 1:
 
