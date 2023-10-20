@@ -404,9 +404,10 @@ def chooseLog(m):
         simulator.reset_GUI()
     else:
         for i in range(len(routing_list_menu.choices[1:])):
-            if m.selected == routing_list_menu.choices[i]:
+            if m.selected == routing_list_menu.choices[i+1]:
                 menu_choice = i
                 break
+        print(menu_choice)
         simulator.show_result_to_GUI(menu_choice)
 
 
@@ -498,22 +499,24 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
-                    #refresh_max_distance_circle()
         for i in range(len(simulator.network.log)):
             before = simulator.network.log[i]["path"][0]
             for current in simulator.network.log[i]["path"][1:]:
-                if current.get_great_distance(current,before) > maxDistance:
-                    print("over dist")
+                if current.get_great_distance(current, before) > maxDistance:
                     simulator.network.routing(simulator.network.log[i]["path"][0], simulator.network.log[i]["path"][-1])
+                    if menu_choice == i:
+                        simulator.reset_GUI()
                     simulator.network.log[i] = simulator.network.log[-1]
                     simulator.network.log.pop()
-                    new_list = []
+                    new_list = ["None"]
                     for j in simulator.network.log:
                         new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
                     routing_list_menu.choices = new_list
+                    routing_list_menu.index = i
+                    if menu_choice == i:
+                        simulator.show_result_to_GUI(i)
                     break
                 before = current
-
-        sleep(1)
+        sleep(0.1)
         if running == True:
             break
