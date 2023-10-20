@@ -19,7 +19,7 @@ CONST_EARTH_RADIUS = 6371  # 지구반경
 # CONST_ORBIT_RADIUS = CONST_EARTH_RADIUS + 550  # 지구반경 + 550KM
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
-CONST_SAT_DT = math.radians(5)  # 위성 공전 각도
+CONST_SAT_DT = math.radians(10)  # 위성 공전 각도
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
@@ -235,7 +235,7 @@ class RoutingSimulator:
         # 종료까지 blocking
         thread.join()
         # 종료후 결과 표출
-        self.show_result_to_GUI()
+        self.show_result_to_GUI(-1)
         self.print_log()
 
     def one_to_one_simulate(self):
@@ -295,7 +295,7 @@ class RoutingSimulator:
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
-            for j in self.network.log[i - 1]["path"]:
+            for j in self.network.log[i]["path"]:
                 j.sat_attr.color = color.white
                 j.sat_attr.radius = 60
                 j.distance.visible = False
@@ -325,14 +325,6 @@ def get_perpendicular_vector(point_coordinates):
     perpendicular_vector = vector(perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2])
     return perpendicular_vector
 
-
-# def draw_max_distance_circle(node_position, max_distance):
-#     distance_circles.append(sphere(pos=node_position, radius=max_distance, color=color.green, opacity=0.1))
-
-
-# def refresh_max_distance_circle():
-#     for r in range(len(distance_circles)):
-#         distance_circles[r].pos = simulator.network.log[0]["path"][r].sat_attr.pos
 
 def func_visible(r):
     if r.checked:
@@ -384,7 +376,7 @@ def Route(t):
     t.text = "Routing"
     simulator.random_N_to_M_simulation(Count(cont))
     t.text = "Route"
-    log_list = []
+    log_list = ["None"]
     for i in simulator.network.log:
         log_list.append(i["packet"]+" (delay: "+str(i["delay"])+")")
     routing_list_menu.choices = log_list
@@ -407,8 +399,15 @@ def Mto1(cont):
 
 def chooseLog(m):
     global menu_choice
-    menu_choice = routing_list_menu.choices.index(m.selected)
-    simulator.show_result_to_GUI(menu_choice)
+    print(m.selected)
+    if m.selected is None:
+        simulator.reset_GUI()
+    else:
+        for i in range(len(routing_list_menu.choices[1:])):
+            if m.selected == routing_list_menu.choices[i]:
+                menu_choice = i
+                break
+        simulator.show_result_to_GUI(menu_choice)
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -477,7 +476,6 @@ checkbox(bind=func_visible, checked=True) # text to right of checkbox
 orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
-
 while 1:
 
     while setting == False:
@@ -501,6 +499,21 @@ while 1:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
                     #refresh_max_distance_circle()
-        sleep(0.1)
+        for i in range(len(simulator.network.log)):
+            before = simulator.network.log[i]["path"][0]
+            for current in simulator.network.log[i]["path"][1:]:
+                if current.get_great_distance(current,before) > maxDistance:
+                    print("over dist")
+                    simulator.network.routing(simulator.network.log[i]["path"][0], simulator.network.log[i]["path"][-1])
+                    simulator.network.log[i] = simulator.network.log[-1]
+                    simulator.network.log.pop()
+                    new_list = []
+                    for j in simulator.network.log:
+                        new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
+                    routing_list_menu.choices = new_list
+                    break
+                before = current
+
+        sleep(1)
         if running == True:
             break
