@@ -1,8 +1,11 @@
 'Python 3.9'
+import time
 import numpy as np
+import vpython
 'Web VPython 3.2'
 from vpython import *
 import pyautogui
+import math
 # 라우팅 시뮬레이터 관련
 from minimum_deflection_angle import *
 import random
@@ -222,7 +225,7 @@ class RoutingSimulator:
         # 종료까지 blocking
         thread.join()
         # 종료후 결과 표출
-        self.show_result_to_GUI()
+        self.show_result_to_GUI(-1)
         self.print_log()
 
     def one_to_one_simulate(self):
@@ -281,7 +284,7 @@ class RoutingSimulator:
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
-            for j in self.network.log[i - 1]["path"]:
+            for j in self.network.log[i]["path"]:
                 j.sat_attr.color = color.white
                 j.sat_attr.radius = 60
                 j.distance.visible = False
@@ -362,7 +365,7 @@ def Route(t):
     t.text = "Routing"
     simulator.random_N_to_M_simulation(Count(cont))
     t.text = "Route"
-    log_list = []
+    log_list = ["None"]
     for i in simulator.network.log:
         log_list.append(i["packet"]+" (delay: "+str(i["delay"])+")")
     routing_list_menu.choices = log_list
@@ -385,8 +388,16 @@ def Mto1(cont):
 
 def chooseLog(m):
     global menu_choice
-    menu_choice = routing_list_menu.choices.index(m.selected)
-    simulator.show_result_to_GUI(menu_choice)
+    print(m.selected)
+    if m.selected is None:
+        simulator.reset_GUI()
+    else:
+        for i in range(len(routing_list_menu.choices[1:])):
+            if m.selected == routing_list_menu.choices[i+1]:
+                menu_choice = i
+                break
+        print(menu_choice)
+        simulator.show_result_to_GUI(menu_choice)
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -455,7 +466,6 @@ checkbox(bind=func_visible, checked=True) # text to right of checkbox
 orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
-
 while 1:
 
     while setting == False:
@@ -478,6 +488,24 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
+        for i in range(len(simulator.network.log)):
+            before = simulator.network.log[i]["path"][0]
+            for current in simulator.network.log[i]["path"][1:]:
+                if current.get_great_distance(current, before) > maxDistance:
+                    simulator.network.routing(simulator.network.log[i]["path"][0], simulator.network.log[i]["path"][-1])
+                    if menu_choice == i:
+                        simulator.reset_GUI()
+                    simulator.network.log[i] = simulator.network.log[-1]
+                    simulator.network.log.pop()
+                    new_list = ["None"]
+                    for j in simulator.network.log:
+                        new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
+                    routing_list_menu.choices = new_list
+                    routing_list_menu.index = i
+                    if menu_choice == i:
+                        simulator.show_result_to_GUI(i)
+                    break
+                before = current
         sleep(0.1)
         if running == True:
             break
