@@ -18,7 +18,7 @@ maxDistance = 0
 CONST_EARTH_RADIUS = 6371  # 지구반경
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
-CONST_SAT_DT = math.radians(5)  # 위성 공전 각도
+CONST_SAT_DT = math.radians(15)  # 위성 공전 각도
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
@@ -65,7 +65,7 @@ class Orbit:
 
 class Satellite:
     # 위성 객체의 attribute
-    sat_attr = None
+    sphere_attr = None
     orbit = None
     id = "SAT-"
     true_anomaly = 0
@@ -92,13 +92,13 @@ class Satellite:
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 설정
-        self.sat_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
+        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
         # 상승/하강 상태
         if math.degrees(theta) >= 270 or math.degrees(theta) <= 90:
             self.state = 'up'
         else:
             self.state = 'down'
-        self.distance = sphere(pos=self.sat_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
+        self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
 
     # 위성의 LLH를 GET하는 메소드, 다만 라디안으로 저장되어 있어 일반 degree로 변환이 필요함(지금은 안되어 있음)
     def get_llh_info(self):
@@ -133,13 +133,13 @@ class Satellite:
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 재설정
-        self.sat_attr.pos = vec(self.y, self.z, self.x)
+        self.sphere_attr.pos = vec(self.y, self.z, self.x)
         true_anom_degree = math.degrees(self.true_anomaly)
         if true_anom_degree >= 270 or true_anom_degree <= 90:
             self.state = 'up'
         else:
             self.state = 'down'
-        self.distance.pos = self.sat_attr.pos
+        self.distance.pos = self.sphere_attr.pos
 
     def get_great_distance(self, node_A, node_B):
         radius = CONST_EARTH_RADIUS + node_A.get_llh_info()['alt']
@@ -266,27 +266,30 @@ class RoutingSimulator:
         self.parallelProcess.clear()
         self.print_log()
 
+    def ground_to_ground_simulation(self, s_lat, s_lon, d_lat, d_lon):
+        return 0
+
     def show_result_to_GUI(self, index):
         for i in range(len(self.network.log)):
             for j in self.network.log[i]["path"]:
-                j.sat_attr.color = color.white
-                j.sat_attr.radius = 60
+                j.sphere_attr.color = color.white
+                j.sphere_attr.radius = 60
                 j.distance.visible = False
         for i in self.network.log[index]["path"]:
             if self.network.log[index]["path"].index(i) == 0:
-                i.sat_attr.color = color.orange
+                i.sphere_attr.color = color.orange
             elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"])-1:
-                i.sat_attr.color = color.purple
+                i.sphere_attr.color = color.purple
             else:
-                i.sat_attr.color = color.cyan
-            i.sat_attr.radius = 120
+                i.sphere_attr.color = color.cyan
+            i.sphere_attr.radius = 120
             i.distance.visible = True
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
             for j in self.network.log[i]["path"]:
-                j.sat_attr.color = color.white
-                j.sat_attr.radius = 60
+                j.sphere_attr.color = color.white
+                j.sphere_attr.radius = 60
                 j.distance.visible = False
 
     def print_log(self):
@@ -506,6 +509,6 @@ while 1:
                         simulator.show_result_to_GUI(i)
                     break
                 before = current
-        sleep(0.1)
+        sleep(0.5)
         if running == True:
             break
