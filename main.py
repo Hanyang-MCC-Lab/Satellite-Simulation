@@ -144,7 +144,6 @@ class Satellite:
         self.distance.pos = self.sphere_attr.pos
 
     def get_great_distance(self, node_B):
-        radius = CONST_EARTH_RADIUS + self.get_llh_info()['alt']
         lon_node_A = self.get_llh_info()['lon']
         lat_node_A = self.get_llh_info()['lat']
         lon_node_B = node_B.get_llh_info()['lon']
@@ -515,18 +514,36 @@ while 1:
                 if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
                     print("ㅠㅠ")
                     simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-                before = path[0]
-                for current in path[1:]:
-                    if current.get_great_distance(before) > maxDistance:
-                        simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-                        if menu_choice == i:
-                            simulator.reset_GUI()
-                        simulator.network.log[i] = simulator.network.log[-1]
-                        print(veta_results)
-                        veta_results.remove(simulator.network.log[i]["packet"])
-                        print(veta_results)
-                        # simulator.network.log.pop()
-                    before = current
+                    veta_results.remove(simulator.network.log[i]["packet"])
+                    if menu_choice == i:
+                        simulator.reset_GUI()
+                    simulator.network.log[i] = simulator.network.log[-1]
+                    simulator.network.log.pop()
+                    print(veta_results)
+                    print(veta_results)
+                    if menu_choice == i:
+                        simulator.show_result_to_GUI(i)
+                    # simulator.network.log.pop()
+                    break
+                else:
+                    before = path[0]
+                    for current in path[1:]:
+                        if current.get_great_distance(before) > maxDistance:
+                            print("punk!(", current.get_great_distance(before),")")
+                            print("before:", before.id, "current:", current.id)
+                            simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
+                            veta_results.remove(simulator.network.log[i]["packet"])
+                            if menu_choice == i:
+                                simulator.reset_GUI()
+                            simulator.network.log[i] = simulator.network.log[-1]
+                            simulator.network.log.pop()
+                            print(veta_results)
+                            print(veta_results)
+                            if menu_choice == i:
+                                simulator.show_result_to_GUI(i)
+                            # simulator.network.log.pop()
+                            break
+                        before = current
             else:
                 before = path[0]
                 for current in path[1:]:
