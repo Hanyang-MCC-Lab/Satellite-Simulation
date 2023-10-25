@@ -10,8 +10,10 @@ import math
 from minimum_deflection_angle import *
 import random
 import threading
-import algorithms
+from algorithms import *
 # 상수선언
+SEOUL_LAT, SEOUL_LON = 37.56, 126.97
+LA_LAT, LA_LON = 34.01, -118.41
 orbitNum = 72
 satNum = 22
 maxDistance = 0
@@ -141,25 +143,14 @@ class Satellite:
             self.state = 'down'
         self.distance.pos = self.sphere_attr.pos
 
-    def get_great_distance(self, node_A, node_B):
-        radius = CONST_EARTH_RADIUS + node_A.get_llh_info()['alt']
-        lon_node_A = node_A.get_llh_info()['lon']
-        lat_node_A = node_A.get_llh_info()['lat']
+    def get_great_distance(self, node_B):
+        radius = CONST_EARTH_RADIUS + self.get_llh_info()['alt']
+        lon_node_A = self.get_llh_info()['lon']
+        lat_node_A = self.get_llh_info()['lat']
         lon_node_B = node_B.get_llh_info()['lon']
         lat_node_B = node_B.get_llh_info()['lat']
 
-        lon_node_A = math.radians(lon_node_A)
-        lat_node_A = math.radians(lat_node_A)
-        lon_node_B = math.radians(lon_node_B)
-        lat_node_B = math.radians(lat_node_B)
-
-        dlon = lon_node_B - lon_node_A
-        dlat = lat_node_B - lat_node_A
-
-        a = math.sin(dlat / 2) ** 2 + math.cos(lat_node_A) * math.cos(lat_node_B) * math.sin(dlon / 2) ** 2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        distance = radius * c
-        return distance
+        return get_distance_with_lon_and_lat(lon_node_A, lat_node_A, lon_node_B, lat_node_B)
 
     def transfer(self, destination, path):
         path.append(self)
@@ -177,9 +168,9 @@ class Satellite:
                         available_list.append(hop)
                         available_list_ecef.append(hop.get_ecef_info())
             # 최적 위성 탐색
-            next_hop = algorithms.MDD(self, destination, available_list)
-            # next_hop = algorithms.MDA(self, destination, available_list)
-            # next_hop = algorithms.TEW(self, destination, available_list)
+            next_hop = MDD(self, destination, available_list)
+            # next_hop = MDA(self, destination, available_list)
+            # next_hop = TEW(self, destination, available_list)
 
             return next_hop.transfer(destination, path)
 
@@ -225,7 +216,6 @@ class RoutingSimulator:
         # 종료까지 blocking
         thread.join()
         # 종료후 결과 표출
-        self.show_result_to_GUI(-1)
         self.print_log()
 
     def one_to_one_simulate(self):
@@ -266,7 +256,16 @@ class RoutingSimulator:
         self.parallelProcess.clear()
         self.print_log()
 
-    def ground_to_ground_simulation(self, s_lat, s_lon, d_lat, d_lon):
+    def ground_to_ground_simulation(self, s_lon, s_lat, d_lon, d_lat):
+        if s_lon < 0:
+            s_lon += 360
+        if d_lon < 0:
+            d_lon += 360
+        start = get_nearest_sat(s_lon, s_lat, constellations)
+        end = get_nearest_sat(d_lon, d_lat, constellations)
+        simulator.network.routing(start, end)
+        veta_results.append(self.network.log[-1]["packet"])
+        self.print_log()
         return 0
 
     def show_result_to_GUI(self, index):
@@ -373,6 +372,14 @@ def Route(t):
         log_list.append(i["packet"]+" (delay: "+str(i["delay"])+")")
     routing_list_menu.choices = log_list
 
+def seoul_to_la(t):
+    t.text = "Routing"
+    simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
+    t.text = "Seoul -> LA (veta)"
+    log_list = routing_list_menu.choices
+    log_list.append("[veta] SEOUL to LA")
+    routing_list_menu.choices = log_list
+
 def Src(q):
     return q.text
 
@@ -459,6 +466,7 @@ button(text="Run", bind=Run)
 # d = winput(bind=Dst, width=120, type="string")
 cont = winput(bind=Mto1, width=120, type="numeric")
 button(text="Route", bind=Route)
+button(text="Seoul -> LA (veta)", bind=seoul_to_la)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 scene.append_to_caption("\n\n connection visible")
@@ -469,6 +477,7 @@ checkbox(bind=func_visible, checked=True) # text to right of checkbox
 orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
+veta_results = []
 while 1:
 
     while setting == False:
@@ -492,23 +501,50 @@ while 1:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
         for i in range(len(simulator.network.log)):
-            before = simulator.network.log[i]["path"][0]
-            for current in simulator.network.log[i]["path"][1:]:
-                if current.get_great_distance(current, before) > maxDistance:
-                    simulator.network.routing(simulator.network.log[i]["path"][0], simulator.network.log[i]["path"][-1])
-                    if menu_choice == i:
-                        simulator.reset_GUI()
-                    simulator.network.log[i] = simulator.network.log[-1]
-                    simulator.network.log.pop()
-                    new_list = ["None"]
-                    for j in simulator.network.log:
-                        new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
-                    routing_list_menu.choices = new_list
-                    routing_list_menu.index = i
-                    if menu_choice == i:
-                        simulator.show_result_to_GUI(i)
-                    break
-                before = current
+            path = simulator.network.log[i]["path"]
+            if simulator.network.log[i]["packet"] in veta_results:
+                first_sat_llh = path[0].get_llh_info()
+                last_sat_llh = path[-1].get_llh_info()
+                print(first_sat_llh)
+                print(last_sat_llh)
+                seoul_to_first_sat = get_distance_with_lon_and_lat(SEOUL_LON, SEOUL_LAT,
+                                                                   first_sat_llh["lon"], first_sat_llh["lat"])
+                la_to_last_sat = get_distance_with_lon_and_lat(LA_LON, LA_LAT,
+                                                               last_sat_llh["lon"], last_sat_llh["lat"])
+                print(seoul_to_first_sat, la_to_last_sat)
+                if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
+                    print("ㅠㅠ")
+                    simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
+                before = path[0]
+                for current in path[1:]:
+                    if current.get_great_distance(before) > maxDistance:
+                        simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
+                        if menu_choice == i:
+                            simulator.reset_GUI()
+                        simulator.network.log[i] = simulator.network.log[-1]
+                        print(veta_results)
+                        veta_results.remove(simulator.network.log[i]["packet"])
+                        print(veta_results)
+                        # simulator.network.log.pop()
+                    before = current
+            else:
+                before = path[0]
+                for current in path[1:]:
+                    if current.get_great_distance(before) > maxDistance:
+                        simulator.network.routing(path[0], path[-1])
+                        if menu_choice == i:
+                            simulator.reset_GUI()
+                        simulator.network.log[i] = simulator.network.log[-1]
+                        simulator.network.log.pop()
+                        new_list = ["None"]
+                        for j in simulator.network.log:
+                            new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
+                        routing_list_menu.choices = new_list
+                        if menu_choice == i:
+                            simulator.show_result_to_GUI(i)
+                        break
+                    before = current
         sleep(0.5)
         if running == True:
             break
+

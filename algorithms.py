@@ -51,7 +51,7 @@ def MDD(sat, dest, available_list):
     for i in available_list:
         if i.id == dest.id:
             return i
-        dist = sat.get_great_distance(i, dest)
+        dist = i.get_great_distance(dest)
         # print(available_list[i].id, "  distance:", dist)
         if dist < smallest_distance:
             smallest_distance = dist
@@ -100,3 +100,33 @@ def MDA(sat, dest, available_list):
             point_with_smallest_angle = i
 
     return point_with_smallest_angle
+
+
+def get_distance_with_lon_and_lat(a_lon, a_lat, b_lon, b_lat):
+    lon_node_A = math.radians(a_lon)
+    lat_node_A = math.radians(a_lat)
+    lon_node_B = math.radians(b_lon)
+    lat_node_B = math.radians(b_lat)
+
+    dlon = lon_node_B - lon_node_A
+    dlat = lat_node_B - lat_node_A
+
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat_node_A) * math.cos(lat_node_B) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance = (6371 + 550) * c
+    return distance
+
+
+def get_nearest_sat(s_lon, s_lat, constellation):
+    min_dist = float('inf')
+    nearest = None
+    for orbits in constellation:
+        for orbit in orbits:
+            for sat in orbit.satellites:
+                llh = sat.get_llh_info()
+                temp = get_distance_with_lon_and_lat(s_lon, s_lat, llh["lon"], llh["lat"])
+                if min_dist > temp:
+                    nearest = sat
+                    min_dist = temp
+
+    return nearest
