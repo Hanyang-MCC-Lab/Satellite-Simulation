@@ -163,13 +163,14 @@ class Satellite:
             for orb in constellations[0]:
                 for hop in orb.satellites:
                     # and (hop.orbit or self.state == hop.state) 인클 디클 고려 조건
-                    if hop != self and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
+                    # if hop != self and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
+                    if hop != self:
                         available_list.append(hop)
                         available_list_ecef.append(hop.get_ecef_info())
             # 최적 위성 탐색
-            next_hop = MDD(self, destination, available_list)
+            # next_hop = MDD(self, destination, available_list)
             # next_hop = MDA(self, destination, available_list)
-            # next_hop = TEW(self, destination, available_list)
+            next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
 
             return next_hop.transfer(destination, path)
 
@@ -517,8 +518,8 @@ while 1:
                 la_to_last_sat = get_distance_with_lon_and_lat(LA_LON, LA_LAT,
                                                                last_sat_llh["lon"], last_sat_llh["lat"])
                 print(seoul_to_first_sat, la_to_last_sat)
-                if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
-                    print("ㅠㅠ")
+                # if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
+                if get_nearest_sat(SEOUL_LON, SEOUL_LAT, constellations) != path[0] or get_nearest_sat(LA_LON, LA_LAT, constellations) != path[-1]:
                     simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
                     veta_results.remove(simulator.network.log[i]["packet"])
                     if menu_choice == i:

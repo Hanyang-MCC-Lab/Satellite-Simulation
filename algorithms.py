@@ -22,19 +22,19 @@ def TEW(sat, cur_info, dest_info, orbitNum, satNum):
     right, left = ((cur_info["orbit"] + 1) + orbitNum) % orbitNum, ((cur_info["orbit"] - 1) + orbitNum) % orbitNum
     up, down = ((cur_info["satellite"] + 1) + satNum) % satNum, ((cur_info["satellite"] - 1) + satNum) % satNum
     if vertical > 0:
-        if horizontal > 0:  # 위로, 동으로
-            return sat.orbit.orbits[right].satellites[up]
-        elif horizontal < 0:  # 위로, 서로
-            return sat.orbit.orbits[left].satellites[up]
-        else:  # 위로
+        # if horizontal > 0:  # 위로, 동으로!!
+        #     return sat.orbit.orbits[right].satellites[up]
+        # elif horizontal < 0:  # 위로, 서로!!
+        #     return sat.orbit.orbits[left].satellites[up]
+        # else:  # 위로
             return sat.orbit.orbits[cur_info["orbit"]].satellites[up]
 
     elif vertical < 0:
-        if horizontal > 0:  # 아래로, 동으로
-            return sat.orbit.orbits[right].satellites[down]
-        elif horizontal < 0:  # 아래로, 서로
-            return sat.orbit.orbits[left].satellites[down]
-        else:  # 아래로
+        # if horizontal > 0:  # 아래로, 동으로!!
+        #     return sat.orbit.orbits[right].satellites[down]
+        # elif horizontal < 0:  # 아래로, 서로!!
+        #     return sat.orbit.orbits[left].satellites[down]
+        # else:  # 아래로
             return sat.orbit.orbits[cur_info["orbit"]].satellites[down]
     else:
         if horizontal > 0:  # 동으로
@@ -44,6 +44,7 @@ def TEW(sat, cur_info, dest_info, orbitNum, satNum):
 
 
 def MDD(sat, dest, available_list):
+    print(dest)
     smallest_distance = float('inf')
     point_with_smallest_distance = None
     # print("current sat:", self.id)
