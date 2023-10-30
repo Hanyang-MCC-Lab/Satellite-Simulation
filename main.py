@@ -173,6 +173,14 @@ class Satellite:
 
             return next_hop.transfer(destination, path)
 
+class Packet:
+    src = None
+    dst = None
+    detourFlag = False
+
+    def __init__(self, src:Satellite, dst:Satellite, detour):
+        self.src = src.id
+        self.dst = dst.id
 
 class Network:
     def __init__(self):
