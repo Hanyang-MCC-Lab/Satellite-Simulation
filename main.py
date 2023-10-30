@@ -79,6 +79,8 @@ class Satellite:
     x, y, z = 0, 0, 0
     state = None
     distance = None
+    packetList = []
+    linkedList = []
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
@@ -173,14 +175,21 @@ class Satellite:
 
             return next_hop.transfer(destination, path)
 
+    def transmit(self, destination):
+        destination.packetList = self.packetList
+        self.packetList = []
+
 class Packet:
     src = None
     dst = None
     detourFlag = False
+    helloFlag = False
 
-    def __init__(self, src:Satellite, dst:Satellite, detour):
+    def __init__(self, src:Satellite, dst:Satellite, detour, hello):
         self.src = src.id
         self.dst = dst.id
+        self.detourFlag = detour
+        self.helloFlag = hello
 
 class Network:
     def __init__(self):
