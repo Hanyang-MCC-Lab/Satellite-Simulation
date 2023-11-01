@@ -8,16 +8,23 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
     south_distance = ((src_info["satellite"] - dest_info["satellite"]) + max_sat_num) % max_sat_num
     north_distance = ((dest_info["satellite"] - src_info["satellite"]) + max_sat_num) % max_sat_num
     col_range, row_range = [], []
+    src_row, src_col = 0, 0
+    dest_row, dest_col = 0, 0
     # 좌 / 우
     if west_distance <= east_distance and west_distance != 0:
         col_range = list(range(dest_info["orbit"], max_orbit_num)) + list(range(src_info["orbit"]))
+        src_col, dest_col = len(col_range)-1, 0
     else:
         col_range = list(range(src_info["orbit"])) + list(range(dest_info["orbit"], max_orbit_num))
+        src_col, dest_col = 0, len(col_range)-1
+
     # 상 / 하
     if north_distance <= south_distance and north_distance != 0:
         row_range = list(range(src_info["satellite"])) + list(range(dest_info["satellite"], max_sat_num))
+        src_row, dest_row = 0, len(row_range)-1
     else:
         row_range = list(range(dest_info["satellite"], max_sat_num)) + list(range(src_info["satellite"]))
+        src_row, dest_row = len(row_range)-1, 0
 
     mhr = []
     for i in row_range:
@@ -26,7 +33,7 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
             temp.append(constellation[0][i][j])
         mhr.append(temp)
 
-    return mhr
+    return mhr, src_row, src_col, dest_row, dest_col
 
 def distributed_detour_routing(src, dest, MHR):
     polar_threshold = 70
