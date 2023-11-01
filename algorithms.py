@@ -1,6 +1,53 @@
 import math
 
 
+def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, constellation):
+    src_info, dest_info = source.get_sat_info(), destination.get_sat_info()
+    west_distance = ((src_info["orbit"] - dest_info["orbit"]) + max_orbit_num) % max_orbit_num
+    east_distance = ((dest_info["orbit"] - src_info["orbit"]) + max_orbit_num) % max_orbit_num
+    south_distance = ((src_info["satellite"] - dest_info["satellite"]) + max_sat_num) % max_sat_num
+    north_distance = ((dest_info["satellite"] - src_info["satellite"]) + max_sat_num) % max_sat_num
+    col_range, row_range = [], []
+    # 좌 / 우
+    if west_distance <= east_distance and west_distance != 0:
+        col_range = list(range(dest_info["orbit"], max_orbit_num)) + list(range(src_info["orbit"]))
+    else:
+        col_range = list(range(src_info["orbit"])) + list(range(dest_info["orbit"], max_orbit_num))
+    # 상 / 하
+    if north_distance <= south_distance and north_distance != 0:
+        row_range = list(range(src_info["satellite"])) + list(range(dest_info["satellite"], max_sat_num))
+    else:
+        row_range = list(range(dest_info["satellite"], max_sat_num)) + list(range(src_info["satellite"]))
+
+    mhr = []
+    for i in row_range:
+        temp = []
+        for j in col_range:
+            temp.append(constellation[0][i][j])
+        mhr.append(temp)
+
+    return mhr
+
+def distributed_detour_routing(src, dest, MHR):
+    polar_threshold = 70
+    src_info, dest_info = src.get_llh_info(), dest.get_ecef_info()
+    # direction = 1(상/하 우선), 0(좌/우 우선)
+    direction = None
+    # src와 dest사이 seam이 존재하는지 [state = 'up' or 'down']
+    if src.state == dest.state:
+        # seam을 지나가는 것을 최우선 => intra link를 이용해 상/하 이동
+        direction = 1
+    else:
+        # 내(src)가 있는 곳이 polar area인가?
+        if src.info["lat"] > 70:
+            direction = 1
+        else:
+            direction = 0
+
+
+
+
+
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
     # 이전 알고리즘 : 8방향
     horizontal, vertical = 0, 0
