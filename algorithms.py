@@ -13,18 +13,18 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
     # 좌 / 우
     if west_distance <= east_distance and west_distance != 0:
         col_range = list(range(dest_info["orbit"], max_orbit_num)) + list(range(src_info["orbit"]))
-        src_col, dest_col = len(col_range)-1, 0
+        src_col, dest_col = len(col_range) - 1, 0
     else:
         col_range = list(range(src_info["orbit"])) + list(range(dest_info["orbit"], max_orbit_num))
-        src_col, dest_col = 0, len(col_range)-1
+        src_col, dest_col = 0, len(col_range) - 1
 
     # 상 / 하
     if north_distance <= south_distance and north_distance != 0:
         row_range = list(range(src_info["satellite"])) + list(range(dest_info["satellite"], max_sat_num))
-        src_row, dest_row = 0, len(row_range)-1
+        src_row, dest_row = 0, len(row_range) - 1
     else:
         row_range = list(range(dest_info["satellite"], max_sat_num)) + list(range(src_info["satellite"]))
-        src_row, dest_row = len(row_range)-1, 0
+        src_row, dest_row = len(row_range) - 1, 0
 
     mhr = []
     for i in row_range:
@@ -35,24 +35,47 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
 
     return mhr, src_row, src_col, dest_row, dest_col
 
-def distributed_detour_routing(src, dest, MHR):
-    polar_threshold = 70
-    src_info, dest_info = src.get_llh_info(), dest.get_ecef_info()
+
+def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation):
     # direction = 1(상/하 우선), 0(좌/우 우선)
-    direction = None
-    # src와 dest사이 seam이 존재하는지 [state = 'up' or 'down']
-    if src.state == dest.state:
-        # seam을 지나가는 것을 최우선 => intra link를 이용해 상/하 이동
-        direction = 1
-    else:
-        # 내(src)가 있는 곳이 polar area인가?
-        if src.info["lat"] > 70:
-            direction = 1
+    mhr, src_row, src_col, dest_row, dest_col = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
+                                                                       constellation)
+    path = []
+    dest_info = dest.get_llh_info()
+    path.append(src)
+    cur_row, cur_col = src_row, src_col
+    while path[-1] != dest:
+        cur_info = path[-1].get_llh_info()
+        if cur_info["lat"] < dest_info["lat"]:
+            if dest_info["lat"] >= 70:
+                if mhr[cur_row][cur_col].get_llh_info()["lat"] >= 70:
+                    direction = 0
+                else:
+                    direction = 1
+            else:
+                direction = 1
+        elif cur_info["lat"] > dest_info["lat"]:
+            if cur_info["lat"] >= 70:
+                direction = 1
+            else:
+                direction = 0
         else:
             direction = 0
 
-
-
+        if direction > 0:
+            if cur_row > dest_row:
+                path.append(mhr[cur_row-1][cur_col])
+                cur_row -= 1
+            else:
+                path.append(mhr[cur_row+1][cur_col])
+                cur_row += 1
+        else:
+            if cur_col > dest_col:
+                path.append(mhr[cur_row][cur_col-1])
+                cur_col -= 1
+            else:
+                path.append(mhr[cur_row][cur_col+1])
+                cur_col += 1
 
 
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
@@ -81,7 +104,7 @@ def TEW(sat, cur_info, dest_info, orbitNum, satNum):
         # elif horizontal < 0:  # 위로, 서로!!
         #     return sat.orbit.orbits[left].satellites[up]
         # else:  # 위로
-            return sat.orbit.orbits[cur_info["orbit"]].satellites[up]
+        return sat.orbit.orbits[cur_info["orbit"]].satellites[up]
 
     elif vertical < 0:
         # if horizontal > 0:  # 아래로, 동으로!!
@@ -89,7 +112,7 @@ def TEW(sat, cur_info, dest_info, orbitNum, satNum):
         # elif horizontal < 0:  # 아래로, 서로!!
         #     return sat.orbit.orbits[left].satellites[down]
         # else:  # 아래로
-            return sat.orbit.orbits[cur_info["orbit"]].satellites[down]
+        return sat.orbit.orbits[cur_info["orbit"]].satellites[down]
     else:
         if horizontal > 0:  # 동으로
             return sat.orbit.orbits[right].satellites[cur_info["satellite"]]
