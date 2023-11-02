@@ -77,6 +77,20 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                 path.append(mhr[cur_row][cur_col+1])
                 cur_col += 1
 
+def selective_flood(mhr, route_direction, fail_col, fail_row, destination):
+    if route_direction is 북반구 우행:
+        for band in range(mhr[fail_row-1][fail_col]): #  ┐방향
+            mhr[fail_row-1][band].detourTable.append(destination, "Down")
+    else if route_direction is  북반구 좌행:
+        for band in range(mhr[fail_row+1][fail_col]): # ┌방향
+            mhr[fail_row+1][band].detourTable.append(destination, "Down")
+    else if route_direction is  남반구 우행:
+        for band in mhr[dest_row-1][dest_col]: #  ┘방향
+            mhr[fail_row-1][fail_col+band].detourTable.append(destination, "Up")
+    else:
+        for band in mhr[dest_row+1][dest_col]: # └방향
+            mhr[fail_row+1][fail_col+band].detourTable.append(destination, "Up")
+
 
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
     # 이전 알고리즘 : 8방향
