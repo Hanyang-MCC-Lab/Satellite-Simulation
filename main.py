@@ -79,8 +79,7 @@ class Satellite:
     x, y, z = 0, 0, 0
     state = None
     distance = None
-    packetList = []
-    linkedList = []
+    detourTable = []
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
