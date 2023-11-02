@@ -172,9 +172,10 @@ class Satellite:
             # 최적 위성 탐색
             # next_hop = MDD(self, destination, available_list)
             # next_hop = MDA(self, destination, available_list)
-            next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
+            # next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
+            next_hop = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0])
 
-            return next_hop.transfer(destination, path)
+            return next_hop
 
     def transmit(self, nextHop):
         nextHop.packetList = self.packetList
