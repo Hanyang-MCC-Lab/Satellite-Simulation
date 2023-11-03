@@ -127,21 +127,36 @@ def selective_flood(mhr, src_row, src_col, dest_row, dest_col, fail_row, fail_co
         fail_direction = "inter fail"
     elif fail_row == dest_row:
         fail_direction = "intra fail"
-    if fail_direction == "inter fail" & fail_col==src_col & src_row < dest_row: #우하행 ㄱ자 / 북반구
+    if fail_direction == "inter fail" and fail_col==src_col and src_row < dest_row: #우하행 ㄱ자 / 북반구
         mhr[fail_row][fail_col].detourTable.append(destination,"down")
         print(mhr[fail_row][fail_col].id)
-    elif fail_direction == "inter fail" & fail_col==dest_col & src_row < dest_row: #우하행 ㄴ자 / 남반구
+    elif fail_direction == "inter fail" and fail_col==dest_col and src_row < dest_row: #우하행 ㄴ자 / 남반구
         for src_row in fail_row:
             mhr[src_row][fail_col - 1].detourTable.append(destination,"right")
             print(mhr[src_row][fail_col - 1].id)
-    elif fail_direction == "inter fail" & fail_col==dest_col & src_row > dest_row: #좌상행 ㄱ자 / 북반구
+    elif fail_direction == "inter fail" and fail_col==dest_col and src_row > dest_row: #좌상행 ㄱ자 / 북반구
         for fail_row in src_row:
             mhr[fail_row][fail_col + 1].detourTable.append(destination, "left")
             print(mhr[fail_row][fail_col +1 ].id)
-    elif fail_direction == "inter fail" & fail_col==src_col & src_row > dest_row: #좌상행 ㄴ자 / 남반구
+    elif fail_direction == "inter fail" and fail_col==src_col and src_row > dest_row: #좌상행 ㄴ자 / 남반구
         mhr[fail_row][fail_col].detourTable.append(destination, "up")
         print(mhr[fail_row][fail_col].id)
 
+
+    elif fail_direction == "intra fail" and fail_row==dest_row and src_row < dest_row: #우하행 ㄱ자 / 북반구
+        for src_col in fail_col:
+            mhr[fail_row-1][src_col].detourTable.append(destination, "down")
+            print(mhr[fail_row-1][src_col].id)
+    elif fail_direction == "intra fail" and fail_row==dest_row and src_row < dest_row: #우하행 ㄴ자 / 남반구
+        mhr[fail_row][fail_col].detourTable.append(destination, "right")
+        print(mhr[fail_row][fail_col].id)
+    elif fail_direction == "intra fail" and fail_row == src_row and src_row > dest_row: #좌상행 ㄱ자 / 북반구
+        mhr[fail_row][fail_col].detourTable.append(destination, "left")
+        print(mhr[fail_row][fail_col].id)
+    elif fail_direction == "intra fail" and fail_row==src_row and src_row > dest_row: #좌상행 ㄴ자 / 남반구
+        for fail_col in dest_col:
+            mhr[fail_row + 1][fail_col].detourTable.append(destination, "up")
+            print(mhr[fail_row+1][fail_col].id)
 
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
     # 이전 알고리즘 : 8방향
