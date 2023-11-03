@@ -79,8 +79,7 @@ class Satellite:
     x, y, z = 0, 0, 0
     state = None
     distance = None
-    packetList = []
-    linkedList = []
+    detourTable = []
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
@@ -187,14 +186,11 @@ class Packet:
     src = None
     dst = None
     detourFlag = False
-    helloFlag = False
-    ack = False
 
-    def __init__(self, src:Satellite, dst:Satellite, detour, hello):
+    def __init__(self, src:Satellite, dst:Satellite, detour):
         self.src = src.id
         self.dst = dst.id
         self.detourFlag = detour
-        self.helloFlag = hello
 
 
 class Network:
@@ -435,7 +431,7 @@ def chooseLog(m):
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     orbits = []
-    if int(math.degrees(inc)) == 90:
+    if int(math.degrees(inc)) >= 89:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, (orbitRot * i)/2, color))
     else:
