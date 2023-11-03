@@ -15,15 +15,15 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
     south_distance = ((src_info["satellite"] - dest_info["satellite"]) + max_sat_num) % max_sat_num
     north_distance = ((dest_info["satellite"] - src_info["satellite"]) + max_sat_num) % max_sat_num
     orbit_range, sat_range = [], []
-    src_row, src_col = 0, 0
-    dest_row, dest_col = 0, 0
+    src_sat, src_orbit = 0, 0
+    dest_sat, dest_orbit = 0, 0
     # 좌 / 우
     if src_info["orbit"] <= dest_info["orbit"]:
         orbit_range = list(range(src_info["orbit"], dest_info["orbit"]+1))
-        src_col, dest_col = 0, len(orbit_range) - 1
+        src_orbit, dest_orbit = 0, len(orbit_range) - 1
     else:
         orbit_range = list(range(dest_info["orbit"], src_info["orbit"]+1))
-        src_col, dest_col = len(orbit_range) - 1, 0
+        src_orbit, dest_orbit = len(orbit_range) - 1, 0
 
     # 상 / 하
     if north_distance <= south_distance and north_distance != 0:
@@ -31,80 +31,114 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
             sat_range = list(range(dest_info["satellite"], -1, -1)) + list(range(max_sat_num-1, src_info["satellite"]-1, -1))
         else:
             sat_range = list(range(dest_info["satellite"], src_info["satellite"]-1, -1))
-        src_row, dest_row = len(sat_range) - 1, 0
+        src_sat, dest_sat = len(sat_range) - 1, 0
     else:
         if src_info["satellite"] < dest_info["satellite"]:
             sat_range = list(range(src_info["satellite"], -1, -1)) + list(range(max_sat_num-1, dest_info["satellite"]-1, -1))
         else:
             sat_range = list(range(src_info["satellite"], dest_info["satellite"]-1, -1))
-        src_row, dest_row = 0, len(sat_range) - 1
+        src_sat, dest_sat = 0, len(sat_range) - 1
+
+    if len(orbit_range) == 1:
+        if src_info["orbit"] < max_orbit_num-1:
+            orbit_range = list(range(src_info["orbit"], src_info["orbit"]+2))
+        else:
+            orbit_range = list(range(src_info["orbit"]-1, src_info["orbit"]+1))
+    if len(sat_range) == 1:
+        lat = latitude_convert(constellation[orbit_range[0]].satellites[sat_range[0]].get_llh_info()["lat"])
+        print("All of latitude of them is", lat)
+        if lat >= 70:
+            sat_range = list(range(src_info["satellite"], src_info["satellite"]-2, -1))
+        elif lat <= -70:
+            sat_range = list(range(src_info["satellite"], src_info["satellite"]+2))
+
 
     mhr = []
-    print(sat_range, orbit_range)
-    print(src_row, src_col)
-    print(dest_row, dest_col)
     for i in sat_range:
         temp = []
         for j in orbit_range:
             temp.append(constellation[j].satellites[i])
         mhr.append(temp)
 
-    return mhr, src_row, src_col, dest_row, dest_col
+
+
+    return mhr, src_sat, src_orbit, dest_sat, dest_orbit
 
 
 def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation):
     print(src.id, "to", dest.id)
     # direction = 1(상/하 우선), 0(좌/우 우선)
-    mhr, src_row, src_col, dest_row, dest_col = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
+    mhr, src_sat, src_orbit, dest_sat, dest_orbit = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
                                                                        constellation)
     path = []
+    print("===MHR===")
     for i in mhr:
         for j in i:
             print(j.id, end=" ")
         print()
     dest_info = dest.get_llh_info()
-    cur_row, cur_col = src_row, src_col
-    while cur_row != dest_row or cur_col != dest_col: # 경로의 마지막이 destination일 때까지
-        path.append(mhr[cur_row][cur_col])
-        cur_info = mhr[cur_row][cur_col].get_llh_info()
+    cur_sat, cur_orbit = src_sat, src_orbit
+    while cur_sat != dest_sat or cur_orbit != dest_orbit: # 경로의 마지막이 destination일 때까지
+        path.append(mhr[cur_sat][cur_orbit])
+        cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
         # sleep(1)
-        print("=====", mhr[cur_row][cur_col].id, "=====")
-        print("current:", cur_row, cur_col)
+        print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+        print("current:", cur_sat, cur_orbit)
         cur_lat, dest_lat = latitude_convert(cur_info["lat"]), latitude_convert(dest_info["lat"])
         # Primary Direction 결정, Alternative Direction 결정 알고리즘 현재 미개발
         # 추후 추가 예정: 전송 불가(실패) 판단 -> Alternative Direction 결정 & Selective Flooding
-        if cur_row < dest_row:
-            if dest_col != cur_col and math.fabs(dest_lat) >= 70:
-                if math.fabs(latitude_convert(mhr[cur_row-1][cur_col].get_llh_info()["lat"])) >= 70:
-                    direction = 0
-                else:
-                    direction = 1
-            else:
-                direction = 1
-        elif cur_row > dest_row:
-            if cur_col == dest_col or math.fabs(cur_lat) >= 70:
+
+        if math.fabs(cur_lat) >= 70 or cur_orbit == dest_orbit:
+            direction = 1
+        elif cur_sat == dest_sat:
+            if math.fabs(cur_lat) >= 70:
                 direction = 1
             else:
                 direction = 0
         else:
-            direction = 0
+            print("dest_lat:", dest_lat)
+            print("cur_lat:", cur_lat)
+            if cur_lat < 0 and cur_lat < latitude_convert(mhr[cur_sat-1][cur_orbit].get_llh_info()["lat"]):
+                direction = 0
+            elif cur_lat > 0 and cur_lat > latitude_convert(mhr[cur_sat+1][cur_orbit].get_llh_info()["lat"]):
+                direction = 0
+            else:
+                direction = 1
+
+        # if cur_sat < dest_sat:
+        #     if dest_orbit != cur_orbit:
+        #         if math.fabs(latitude_convert(mhr[cur_sat+1][cur_orbit].get_llh_info()["lat"])) >= 70:
+        #             direction = 0
+        #         else:
+        #             direction = 1
+        #     else:
+        #         direction = 1
+        # elif cur_sat > dest_sat:
+        #     print("cur_lat:", cur_lat)
+        #     print("abs cur_lat:", math.fabs(cur_lat))
+        #     if cur_orbit == dest_orbit or math.fabs(cur_lat) >= 70:
+        #         direction = 1
+        #     else:
+        #         direction = 0
+        # else:
+        #     direction = 0
 
         # Next hop 결정 및 cur 변수 재설정
         if direction > 0:
-            if cur_row > dest_row:
+            if cur_sat > dest_sat:
                 print("up")
-                cur_row -= 1
+                cur_sat -= 1
             else:
                 print("down")
-                cur_row += 1
+                cur_sat += 1
         else:
-            if cur_col > dest_col:
+            if cur_orbit > dest_orbit:
                 print("left")
-                cur_col -= 1
+                cur_orbit -= 1
             else:
                 print("right")
-                cur_col += 1
-    path.append(mhr[cur_row][cur_col])
+                cur_orbit += 1
+    path.append(mhr[cur_sat][cur_orbit])
 
     # 경로 리턴 path <List<Satellite>>
     return path
