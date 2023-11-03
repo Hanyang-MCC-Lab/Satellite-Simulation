@@ -79,9 +79,12 @@ class Satellite:
     x, y, z = 0, 0, 0
     state = None
     distance = None
+    # 상하좌우에 대한 연결상태, 1=안됨, 0=됨
+    link_state = "0000"
     detourTable = []
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
+        self.link_state = "0000"
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
@@ -102,6 +105,13 @@ class Satellite:
         else:
             self.state = 'down'
         self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
+
+    def change_link_state(self, index):
+        if self.link_state[index] == "0":
+            self.link_state[index] = "1"
+        else:
+            self.link_state[index] = "0"
+
 
     # 위성의 LLH를 GET하는 메소드, 다만 라디안으로 저장되어 있어 일반 degree로 변환이 필요함(지금은 안되어 있음)
     def get_llh_info(self):
