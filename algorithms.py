@@ -52,15 +52,12 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
         elif lat <= -70:
             sat_range = list(range(src_info["satellite"], src_info["satellite"]+2))
 
-
     mhr = []
     for i in sat_range:
         temp = []
         for j in orbit_range:
             temp.append(constellation[j].satellites[i])
         mhr.append(temp)
-
-
 
     return mhr, src_sat, src_orbit, dest_sat, dest_orbit
 
@@ -104,24 +101,6 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                 direction = 0
             else:
                 direction = 1
-
-        # if cur_sat < dest_sat:
-        #     if dest_orbit != cur_orbit:
-        #         if math.fabs(latitude_convert(mhr[cur_sat+1][cur_orbit].get_llh_info()["lat"])) >= 70:
-        #             direction = 0
-        #         else:
-        #             direction = 1
-        #     else:
-        #         direction = 1
-        # elif cur_sat > dest_sat:
-        #     print("cur_lat:", cur_lat)
-        #     print("abs cur_lat:", math.fabs(cur_lat))
-        #     if cur_orbit == dest_orbit or math.fabs(cur_lat) >= 70:
-        #         direction = 1
-        #     else:
-        #         direction = 0
-        # else:
-        #     direction = 0
 
         # Next hop 결정 및 cur 변수 재설정
         if direction > 0:
