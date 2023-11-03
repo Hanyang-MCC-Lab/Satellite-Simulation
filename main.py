@@ -496,12 +496,12 @@ orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
 veta_results = []
-seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
-                       math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
-                       math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
-losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
-                       math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
-                       math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
+# seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
+#                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
+#                        math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
+# losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
+#                        math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
+#                        math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
 while 1:
 
     while setting == False:
