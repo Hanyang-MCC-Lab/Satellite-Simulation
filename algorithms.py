@@ -61,12 +61,23 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
 
     return mhr, src_sat, src_orbit, dest_sat, dest_orbit
 
-
+def get_optimal_row_line(mhr):
+    best_latitude_line = 0
+    best_latitude = math.fabs(latitude_convert(mhr[best_latitude_line][0].get_llh_info()["lat"]))
+    for idx in range(len(mhr)):
+        temp = math.fabs(latitude_convert(mhr[idx][0].get_llh_info()["lat"]))
+        if (best_latitude < temp < 70) or best_latitude >= 70:
+            print(idx,"is best currently(",temp,")")
+            best_latitude_line = idx
+            best_latitude = temp
+    print(best_latitude_line)
+    return best_latitude_line
 def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation):
     print(src.id, "to", dest.id)
     # direction = 1(상/하 우선), 0(좌/우 우선)
     mhr, src_sat, src_orbit, dest_sat, dest_orbit = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
                                                                        constellation)
+    vertical_line = get_optimal_row_line(mhr)
     path = []
     print("===MHR===")
     for i in mhr:
@@ -85,22 +96,26 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
         # Primary Direction 결정, Alternative Direction 결정 알고리즘 현재 미개발
         # 추후 추가 예정: 전송 불가(실패) 판단 -> Alternative Direction 결정 & Selective Flooding
 
-        if math.fabs(cur_lat) >= 70 or cur_orbit == dest_orbit:
-            direction = 1
-        elif cur_sat == dest_sat:
-            if math.fabs(cur_lat) >= 70:
-                direction = 1
-            else:
-                direction = 0
+        if cur_sat == vertical_line and cur_orbit != dest_orbit:
+            direction = 0
         else:
-            print("dest_lat:", dest_lat)
-            print("cur_lat:", cur_lat)
-            if cur_lat < 0 and cur_lat < latitude_convert(mhr[cur_sat-1][cur_orbit].get_llh_info()["lat"]):
-                direction = 0
-            elif cur_lat > 0 and cur_lat > latitude_convert(mhr[cur_sat+1][cur_orbit].get_llh_info()["lat"]):
-                direction = 0
-            else:
-                direction = 1
+            direction = 1
+        # if math.fabs(cur_lat) >= 70 or cur_orbit == dest_orbit:
+        #     direction = 1
+        # elif cur_sat == dest_sat:
+        #     if math.fabs(cur_lat) >= 70:
+        #         direction = 1
+        #     else:
+        #         direction = 0
+        # else:
+        #     print("dest_lat:", dest_lat)
+        #     print("cur_lat:", cur_lat)
+        #     if cur_lat < 0 and cur_lat < latitude_convert(mhr[cur_sat-1][cur_orbit].get_llh_info()["lat"]):
+        #         direction = 0
+        #     elif cur_lat > 0 and cur_lat > latitude_convert(mhr[cur_sat+1][cur_orbit].get_llh_info()["lat"]):
+        #         direction = 0
+        #     else:
+        #         direction = 1
 
         # Next hop 결정 및 cur 변수 재설정
         if direction > 0:
