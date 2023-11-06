@@ -393,7 +393,8 @@ def Run(r):
 
 def Route(t):
     t.text = "Routing"
-    simulator.random_N_to_M_simulation(Count(cont))
+    # simulator.random_N_to_M_simulation(Count(cont))
+    simulator.one_to_one()
     t.text = "Route"
     log_list = ["None"]
     for i in simulator.network.log:
@@ -480,8 +481,8 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 # 입력 GUI구성
 running = True
 setting = True
-scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
-# "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
+# scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
+scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
 
 n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
@@ -490,9 +491,9 @@ s = winput(bind=SatNum, width=120, type="numeric")
 m = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
-# q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
-# d = winput(bind=Dst, width=120, type="string")
-cont = winput(bind=Mto1, width=120, type="numeric")
+q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
+d = winput(bind=Dst, width=120, type="string")
+# cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
 button(text="Seoul -> LA (veta)", bind=seoul_to_la)
 scene.append_to_caption("\n\n Routing result list  :  ")
