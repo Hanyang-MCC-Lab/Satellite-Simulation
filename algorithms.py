@@ -152,10 +152,12 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
     return path
 
 def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fail_orbit, destination):
+    fail_direction = "default"
     if fail_orbit == dest_orbit:
         fail_direction = "inter fail"
     elif fail_sat == dest_sat:
         fail_direction = "intra fail"
+
     if fail_direction == "inter fail" and fail_orbit==src_orbit and src_sat < dest_sat: #우하행 ㄱ자 / 북반구
         mhr[fail_sat][fail_orbit].detourTable.append(destination,"down")
         print(mhr[fail_sat][fail_orbit].id)
