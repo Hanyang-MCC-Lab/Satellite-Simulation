@@ -16,7 +16,7 @@ SEOUL_LAT, SEOUL_LON = 37.56, 126.97
 LA_LAT, LA_LON = 34.01, -118.41
 orbitNum = 72
 satNum = 22
-maxDistance = 0
+# maxDistance = 0
 CONST_EARTH_RADIUS = 6371  # 지구반경
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
@@ -78,7 +78,7 @@ class Satellite:
     # ECEF 좌표계상의 x, y, z좌표
     x, y, z = 0, 0, 0
     state = None
-    distance = None
+    # distance = None
     # 상하좌우에 대한 연결상태, 1=안됨, 0=됨
     link_state = "0000"
     detourTable = {}
@@ -104,7 +104,7 @@ class Satellite:
             self.state = 'up'
         else:
             self.state = 'down'
-        self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
+        # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
 
     def change_link_state(self, index):
         if self.link_state[index] == "0":
@@ -152,7 +152,7 @@ class Satellite:
             self.state = 'up'
         else:
             self.state = 'down'
-        self.distance.pos = self.sphere_attr.pos
+        # self.distance.pos = self.sphere_attr.pos
 
     def get_great_distance(self, node_B):
         lon_node_A = self.get_llh_info()['lon']
@@ -301,7 +301,7 @@ class RoutingSimulator:
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
-                j.distance.visible = False
+                # j.distance.visible = False
         for i in self.network.log[index]["path"]:
             if self.network.log[index]["path"].index(i) == 0:
                 i.sphere_attr.color = color.orange
@@ -310,14 +310,14 @@ class RoutingSimulator:
             else:
                 i.sphere_attr.color = color.cyan
             i.sphere_attr.radius = 120
-            i.distance.visible = True
+            # i.distance.visible = True
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
-                j.distance.visible = False
+                # j.distance.visible = False
 
     def print_log(self):
         print("============log details============")
@@ -345,13 +345,13 @@ def get_perpendicular_vector(point_coordinates):
     return perpendicular_vector
 
 
-def func_visible(r):
-    if r.checked:
-        for i in simulator.network.log[menu_choice]["path"]:
-            i.distance.opacity = 0.1
-    else:
-        for i in simulator.network.log[menu_choice]["path"]:
-            i.distance.opacity = 0
+# def func_visible(r):
+#     if r.checked:
+#         for i in simulator.network.log[menu_choice]["path"]:
+#             i.distance.opacity = 0.1
+#     else:
+#         for i in simulator.network.log[menu_choice]["path"]:
+#             i.distance.opacity = 0
 
 def Inc(i):
     return i.number
@@ -482,24 +482,24 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 running = True
 setting = True
 # scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
-scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
+scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number /     Source     / Destination\n\n"
 
 n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
 o = winput(bind=OrbNum, width=120, type="numeric")
 s = winput(bind=SatNum, width=120, type="numeric")
-m = winput(bind=MaxDist, width=120, type="numeric")
+# m = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
 q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
 d = winput(bind=Dst, width=120, type="string")
 # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
-button(text="Seoul -> LA (veta)", bind=seoul_to_la)
+# button(text="Seoul -> LA (veta)", bind=seoul_to_la)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
-scene.append_to_caption("\n\n connection visible")
-checkbox(bind=func_visible, checked=True) # text to right of checkbox
+# scene.append_to_caption("\n\n connection visible")
+# checkbox(bind=func_visible, checked=True) # text to right of checkbox
 
 
 # 메인
@@ -524,7 +524,7 @@ while 1:
         satNum = SatNum(s)
         orbitRot = math.radians(360 / orbitNum)
         satRot = math.radians(360 / satNum)
-        maxDistance = MaxDist(m)
+        # maxDistance = MaxDist(m)
         deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
         orbit_cnt = (orbit_cnt + 1) % 4
         setting = not setting
@@ -564,38 +564,38 @@ while 1:
                 else:
                     before = path[0]
                     for current in path[1:]:
-                        if current.get_great_distance(before) > maxDistance:
-                            print("punk!(", current.get_great_distance(before),")")
-                            print("before:", before.id, "current:", current.id)
-                            simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-                            veta_results.remove(simulator.network.log[i]["packet"])
-                            if menu_choice == i:
-                                simulator.reset_GUI()
-                            simulator.network.log[i] = simulator.network.log[-1]
-                            simulator.network.log.pop()
-                            print(veta_results)
-                            print(veta_results)
-                            if menu_choice == i:
-                                simulator.show_result_to_GUI(i)
-                            # simulator.network.log.pop()
-                            break
-                        before = current
-            else:
-                before = path[0]
-                for current in path[1:]:
-                    if current.get_great_distance(before) > maxDistance:
-                        simulator.network.routing(path[0], path[-1])
+                        # if current.get_great_distance(before) > maxDistance:
+                        print("punk!(", current.get_great_distance(before),")")
+                        print("before:", before.id, "current:", current.id)
+                        simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
+                        veta_results.remove(simulator.network.log[i]["packet"])
                         if menu_choice == i:
                             simulator.reset_GUI()
                         simulator.network.log[i] = simulator.network.log[-1]
                         simulator.network.log.pop()
-                        new_list = ["None"]
-                        for j in simulator.network.log:
-                            new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
-                        routing_list_menu.choices = new_list
+                        print(veta_results)
+                        print(veta_results)
                         if menu_choice == i:
                             simulator.show_result_to_GUI(i)
-                        break
+                            # simulator.network.log.pop()
+                            # break
+                        before = current
+            else:
+                before = path[0]
+                for current in path[1:]:
+                    # if current.get_great_distance(before) > maxDistance:
+                    simulator.network.routing(path[0], path[-1])
+                    if menu_choice == i:
+                        simulator.reset_GUI()
+                    simulator.network.log[i] = simulator.network.log[-1]
+                    simulator.network.log.pop()
+                    new_list = ["None"]
+                    for j in simulator.network.log:
+                        new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
+                    routing_list_menu.choices = new_list
+                    if menu_choice == i:
+                        simulator.show_result_to_GUI(i)
+                        # break
                     before = current
         sleep(0.5)
         if running == True:
