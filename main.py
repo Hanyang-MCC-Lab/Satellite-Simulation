@@ -409,6 +409,13 @@ def seoul_to_la(t):
     log_list.append("[veta] SEOUL to LA")
     routing_list_menu.choices = log_list
 
+def reset_detour_table(t):
+    t.text = "Ing.."
+    for orbit in constellations[0]:
+        for sat in orbit.satellites:
+            sat.detourTable = {}
+    t.text = "Reset detour tables"
+
 def Src(q):
     return q.text
 
@@ -496,6 +503,7 @@ d = winput(bind=Dst, width=120, type="string")
 # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
 button(text="Seoul -> LA (veta)", bind=seoul_to_la)
+button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 scene.append_to_caption("\n\n connection visible")

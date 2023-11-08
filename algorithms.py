@@ -146,7 +146,7 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
             else: # 실패
                 print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
                 already_failure = True
-                selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest)
+                selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest, direction)
                 if direction in ["up", "down"]:
                     if cur_orbit == 0:
                         cur_orbit += 1
@@ -202,20 +202,20 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
             elif fail_orbit > src_orbit:
                 for sat in range(src_sat,fail_sat):
                     mhr[sat][fail_orbit-1].detourTable[destination.id] = "down"
-        elif failed_direction is " left":
+        elif failed_direction is "left":
             if fail_sat < src_sat:
                 for orbit in range(fail_orbit,src_orbit):
                     mhr[fail_sat+1][orbit].detourTable[destination.id] = "left"
             if fail_sat > src_sat:
                 for orbit in range(fail_orbit,src_orbit):
                     mhr[fail_sat-1][orbit].detourTable[destination.id] = "left"
-        elif failed_direction is " right":
+        elif failed_direction is "right":
             if fail_sat < src_sat:
-                for orbit in range(src_orbit,fail_orbit):
-                    mhr[fail_sat+1][orbit].detourTable[destination.id] = "left"
+                for orbit in range(src_orbit,fail_orbit+1):
+                    mhr[fail_sat+1][orbit].detourTable[destination.id] = "right"
             if fail_sat > src_sat:
-                for orbit in range(src_orbit,fail_orbit):
-                    mhr[fail_sat-1][orbit].detourTable[destination.id] = "left"
+                for orbit in range(src_orbit,fail_orbit+1):
+                    mhr[fail_sat-1][orbit].detourTable[destination.id] = "right"
 
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
     # 이전 알고리즘 : 8방향
