@@ -222,7 +222,11 @@ class Network:
 
     def routing(self, start: Satellite, dest: Satellite):
         path = start.transfer(dest, [])
-        delay = self.get_delay(start, dest)
+        delay = 0
+        a = path[0]
+        for b in path[1:]:
+            delay += self.get_delay(a, b)
+            a = b
         self.log.append({
             "index": len(self.log),
             "packet": "[" + start.id + " -> " + dest.id + "]",
