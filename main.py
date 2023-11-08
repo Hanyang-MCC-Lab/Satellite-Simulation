@@ -85,6 +85,7 @@ class Satellite:
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.link_state = "0000"
+        self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
@@ -223,7 +224,8 @@ class Network:
         path = start.transfer(dest, [])
         delay = self.get_delay(start, dest)
         self.log.append({
-            "packet": "Packet-" + start.id + "To" + dest.id,
+            "index": len(self.log),
+            "packet": "[" + start.id + " -> " + dest.id + "]",
             "delay": round(delay * 1000, 6),
             "path": path,
         })
@@ -398,7 +400,7 @@ def Route(t):
     t.text = "Route"
     log_list = ["None"]
     for i in simulator.network.log:
-        log_list.append(i["packet"]+" (delay: "+str(i["delay"])+")")
+        log_list.append(str(i["index"])+". "+i["packet"]+" (delay: "+str(i["delay"])+")")
     routing_list_menu.choices = log_list
 
 def seoul_to_la(t):
@@ -507,7 +509,7 @@ button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 scene.append_to_caption("\n\n connection visible")
-checkbox(bind=func_visible, checked=True) # text to right of checkbox
+# checkbox(bind=func_visible, checked=True) # text to right of checkbox
 
 
 # 메인
