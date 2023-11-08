@@ -96,82 +96,115 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
         print("=====", mhr[cur_sat][cur_orbit].id, "=====")
         print("current:", cur_sat, cur_orbit)
         cur_lat, dest_lat = latitude_convert(cur_info["lat"]), latitude_convert(dest_info["lat"])
-
+        print("Detour table:", mhr[cur_sat][cur_orbit].detourTable)
         if dest.id in mhr[cur_sat][cur_orbit].detourTable:
             # detour table에 의한 라우팅, 성공확률 100% 고정
             print(cur_id, "has a direction in its detour table!")
             detour_direction = mhr[cur_sat][cur_orbit].detourTable[dest.id]
 
             if detour_direction == "up":
-                cur_sat += 1
+                cur_sat -= 1
             elif detour_direction == "right":
                 cur_orbit += 1
             elif detour_direction == "left":
                 cur_orbit -= 1
             elif detour_direction == "down":
-                cur_sat -= 1
+                cur_sat += 1
         else:
             # 일반 라우팅, 성공확률 80%, 실패 후 성공확률 100% 고정
+            # step1. 방향결정
             if (cur_sat == vertical_line and cur_orbit != dest_orbit) or cur_sat == dest_sat:
-                direction = 0
+                if cur_orbit > dest_orbit:
+                    direction = "left"
+                else:
+                    direction = "right"
             else:
-                direction = 1
-            # Next hop 결정 및 cur 변수 재설정
+                if cur_sat > dest_sat:
+                    direction = "up"
+                else:
+                    direction = "down"
+            # step2. 성공/실패 결정 80%로 성공, 실패 후 성공확률 100% 고정
             if not already_failure:
                 success = random.choices([True, False], weights=[0.8, 0.2])[0]
             else:
                 success = True
-            #     디버깅용
-            if not success: print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
-            if direction > 0:
-                if cur_sat > dest_sat:
-                    # if src.link_state[0] == '0':
-                    if success:
-                        print("up")
-                        cur_sat -= 1
-                else:
-                    # if src.link_state[1] == '0':
-                    if success:
-                        print("down")
-                        cur_sat += 1
-                if not success:
+            # step3. 성공/실패에 따른 알고리즘 분리
+            if success: # 성공
+                if direction == "up":
+                    cur_sat -= 1
+                elif direction == "down":
+                    cur_sat += 1
+                elif direction == "left":
+                    cur_orbit -= 1
+                else: # direction == "right"
+                    cur_orbit += 1
+            else: # 실패
+                print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
+                already_failure = True
+                selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest)
+                if direction in ["up", "down"]:
                     if cur_orbit == 0:
                         cur_orbit += 1
                     else:
                         cur_orbit -= 1
-            else:
-                if cur_orbit > dest_orbit:
-                    # if src.link_state[2] == '0':
-                    if success:
-                        print("left")
-                        cur_orbit -= 1
-                else:
-                    # if src.link_state[3] == '0':
-                    if success:
-                        print("right")
-                        cur_orbit += 1
-                if not success:
+                else: # direction in ["up","down"]
                     if cur_sat == 0:
                         cur_sat += 1
                     else:
                         cur_sat -= 1
+                print("move instantly to", mhr[cur_sat][cur_orbit].id)
 
-            if not success:
-                already_failure = True
-                selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest)
+            #
+            # if not success:
+            # if direction > 0:
+            #     if cur_sat > dest_sat:
+            #         # if src.link_state[0] == '0':
+            #         if success:
+            #             print("up")
+            #             cur_sat -= 1
+            #     else:
+            #         # if src.link_state[1] == '0':
+            #         if success:
+            #             print("down")
+            #             cur_sat += 1
+            #     if not success:
+            #         if cur_orbit == 0:
+            #             cur_orbit += 1
+            #         else:
+            #             cur_orbit -= 1
+            # else:
+            #     if cur_orbit > dest_orbit:
+            #         # if src.link_state[2] == '0':
+            #         if success:
+            #             print("left")
+            #             cur_orbit -= 1
+            #     else:
+            #         # if src.link_state[3] == '0':
+            #         if success:
+            #             print("right")
+            #             cur_orbit += 1
+            #     if not success:
+            #         if cur_sat == 0:
+            #             cur_sat += 1
+            #         else:
+            #             cur_sat -= 1
+
+            # if not success:
+            #     already_failure = True
+            #     selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest)
 
     path.append(mhr[cur_sat][cur_orbit])
 
     # 경로 리턴 path <List<Satellite>>
     return path
 
-def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fail_orbit, destination):
+def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fail_orbit, destination, failed_direction):
     fail_direction = "default"
     if fail_orbit == dest_orbit:
         fail_direction = "inter fail"
     elif fail_sat == dest_sat:
         fail_direction = "intra fail"
-
+    # append(destination, "down")
     if fail_direction == "inter fail" and fail_orbit==src_orbit and src_sat < dest_sat: #우하행 ㄱ자 / 북반구
         mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
         print(mhr[fail_sat][fail_orbit].id)
@@ -182,7 +215,7 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
     elif fail_direction == "inter fail" and fail_orbit==dest_orbit and src_sat > dest_sat: #좌상행 ㄱ자 / 북반구
         for fail_sat in src_sat:
             mhr[fail_sat][fail_orbit + 1].detourTable[destination.id] = "left"
-            print(mhr[fail_sat][fail_orbit +1 ].id)
+            print(mhr[fail_sat][fail_orbit + 1].id)
     elif fail_direction == "inter fail" and fail_orbit==src_orbit and src_sat > dest_sat: #좌상행 ㄴ자 / 남반구
         mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
         print(mhr[fail_sat][fail_orbit].id)
