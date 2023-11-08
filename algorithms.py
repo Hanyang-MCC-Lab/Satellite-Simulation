@@ -166,6 +166,7 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
 
 def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fail_orbit, destination, failed_direction):
     if fail_sat == src_sat or fail_orbit == src_orbit: #fail_sat mhr이 src_sat mhr과 맡닿을경우
+        print("is in src line")
         if failed_direction is "up":
             if fail_orbit < dest_orbit:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "right"
@@ -178,43 +179,43 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "left"
         elif failed_direction is "right":
             if fail_sat < dest_sat:
-                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
-            elif fail_sat > dest_sat:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
+            elif fail_sat > dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
         elif failed_direction is "left":
             if fail_sat < dest_sat:
-                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
-            elif fail_sat > dest_sat:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
+            elif fail_sat > dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
 
     elif fail_sat == dest_sat or fail_orbit == dest_orbit: #fail_sat이 dest_sat과 linear하여 selective flood가 필요할 때
         if failed_direction is "up":
             if fail_orbit < src_orbit:
-                for sat in range(fail_sat,src_sat):
+                for sat in range(fail_sat, src_sat+1):
                     mhr[sat][fail_orbit+1].detourTable[destination.id] = "up"
             elif fail_orbit > src_orbit:
-                for sat in range(fail_sat,src_sat):
+                for sat in range(fail_sat, src_sat+1):
                     mhr[sat][fail_orbit-1].detourTable[destination.id] = "up"
         elif failed_direction is "down":
             if fail_orbit < src_orbit:
-                for sat in range(src_sat, fail_sat):
+                for sat in range(src_sat, fail_sat+1):
                     mhr[sat][fail_orbit+1].detourTable[destination.id] = "down"
             elif fail_orbit > src_orbit:
-                for sat in range(src_sat,fail_sat):
+                for sat in range(src_sat, fail_sat+1):
                     mhr[sat][fail_orbit-1].detourTable[destination.id] = "down"
         elif failed_direction is "left":
             if fail_sat < src_sat:
-                for orbit in range(fail_orbit,src_orbit):
+                for orbit in range(fail_orbit, src_orbit+1):
                     mhr[fail_sat+1][orbit].detourTable[destination.id] = "left"
             if fail_sat > src_sat:
-                for orbit in range(fail_orbit,src_orbit):
+                for orbit in range(fail_orbit, src_orbit+1):
                     mhr[fail_sat-1][orbit].detourTable[destination.id] = "left"
         elif failed_direction is "right":
             if fail_sat < src_sat:
-                for orbit in range(src_orbit,fail_orbit+1):
+                for orbit in range(src_orbit, fail_orbit+1):
                     mhr[fail_sat+1][orbit].detourTable[destination.id] = "right"
             if fail_sat > src_sat:
-                for orbit in range(src_orbit,fail_orbit+1):
+                for orbit in range(src_orbit, fail_orbit+1):
                     mhr[fail_sat-1][orbit].detourTable[destination.id] = "right"
 
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
