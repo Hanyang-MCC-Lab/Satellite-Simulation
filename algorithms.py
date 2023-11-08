@@ -1,5 +1,255 @@
 import math
+import random
+from time import sleep
 
+
+def latitude_convert(degree):
+    if 90 < degree <= 270:
+        return (degree-180) * -1
+    elif 270 < degree <= 360:
+        return degree - 360
+    else:
+        return degree
+
+def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, constellation):
+    src_info, dest_info = source.get_sat_info(), destination.get_sat_info()
+    south_distance = ((src_info["satellite"] - dest_info["satellite"]) + max_sat_num) % max_sat_num
+    north_distance = ((dest_info["satellite"] - src_info["satellite"]) + max_sat_num) % max_sat_num
+    orbit_range, sat_range = [], []
+    src_sat, src_orbit = 0, 0
+    dest_sat, dest_orbit = 0, 0
+    # 좌 / 우
+    if src_info["orbit"] <= dest_info["orbit"]:
+        orbit_range = list(range(src_info["orbit"], dest_info["orbit"]+1))
+        src_orbit, dest_orbit = 0, len(orbit_range) - 1
+    else:
+        orbit_range = list(range(dest_info["orbit"], src_info["orbit"]+1))
+        src_orbit, dest_orbit = len(orbit_range) - 1, 0
+
+    # 상 / 하
+    if north_distance <= south_distance and north_distance != 0:
+        if src_info["satellite"] > dest_info["satellite"]:
+            sat_range = list(range(dest_info["satellite"], -1, -1)) + list(range(max_sat_num-1, src_info["satellite"]-1, -1))
+        else:
+            sat_range = list(range(dest_info["satellite"], src_info["satellite"]-1, -1))
+        src_sat, dest_sat = len(sat_range) - 1, 0
+    else:
+        if src_info["satellite"] < dest_info["satellite"]:
+            sat_range = list(range(src_info["satellite"], -1, -1)) + list(range(max_sat_num-1, dest_info["satellite"]-1, -1))
+        else:
+            sat_range = list(range(src_info["satellite"], dest_info["satellite"]-1, -1))
+        src_sat, dest_sat = 0, len(sat_range) - 1
+
+    if len(orbit_range) == 1:
+        if src_info["orbit"] < max_orbit_num-1:
+            orbit_range = list(range(src_info["orbit"], src_info["orbit"]+2))
+        else:
+            orbit_range = list(range(src_info["orbit"]-1, src_info["orbit"]+1))
+    if len(sat_range) == 1:
+        lat = latitude_convert(constellation[orbit_range[0]].satellites[sat_range[0]].get_llh_info()["lat"])
+        print("All of latitude of them is", lat)
+        if lat >= 70:
+            sat_range = list(range(src_info["satellite"], src_info["satellite"]-2, -1))
+        elif lat <= -70:
+            sat_range = list(range(src_info["satellite"], src_info["satellite"]+2))
+
+    mhr = []
+    for i in sat_range:
+        temp = []
+        for j in orbit_range:
+            temp.append(constellation[j].satellites[i])
+        mhr.append(temp)
+
+    return mhr, src_sat, src_orbit, dest_sat, dest_orbit
+
+def get_optimal_row_line(mhr):
+    best_latitude_line = 0
+    best_latitude = math.fabs(latitude_convert(mhr[best_latitude_line][0].get_llh_info()["lat"]))
+    for idx in range(len(mhr)):
+        temp = math.fabs(latitude_convert(mhr[idx][0].get_llh_info()["lat"]))
+        if (best_latitude < temp < 70) or best_latitude >= 70:
+            print(idx,"is best currently(",temp,")")
+            best_latitude_line = idx
+            best_latitude = temp
+    print(best_latitude_line)
+    return best_latitude_line
+def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation):
+    print(src.id, "to", dest.id)
+    # direction = 1(상/하 우선), 0(좌/우 우선)
+    mhr, src_sat, src_orbit, dest_sat, dest_orbit = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
+                                                                       constellation)
+    vertical_line = get_optimal_row_line(mhr)
+    path = []
+    print("===MHR===")
+    for i in mhr:
+        for j in i:
+            print(j.id, end=" ")
+        print()
+    already_failure = False
+    dest_info = dest.get_llh_info()
+    cur_sat, cur_orbit = src_sat, src_orbit
+    while cur_sat != dest_sat or cur_orbit != dest_orbit: # 경로의 마지막이 destination일 때까지
+        path.append(mhr[cur_sat][cur_orbit])
+        cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
+        cur_id = mhr[cur_sat][cur_orbit].id
+        # sleep(1)
+        print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+        print("current:", cur_sat, cur_orbit)
+        cur_lat, dest_lat = latitude_convert(cur_info["lat"]), latitude_convert(dest_info["lat"])
+        print("Detour table:", mhr[cur_sat][cur_orbit].detourTable)
+        if dest.id in mhr[cur_sat][cur_orbit].detourTable:
+            # detour table에 의한 라우팅, 성공확률 100% 고정
+            print(cur_id, "has a direction in its detour table!")
+            detour_direction = mhr[cur_sat][cur_orbit].detourTable[dest.id]
+
+            if detour_direction == "up":
+                cur_sat -= 1
+            elif detour_direction == "right":
+                cur_orbit += 1
+            elif detour_direction == "left":
+                cur_orbit -= 1
+            elif detour_direction == "down":
+                cur_sat += 1
+        else:
+            # 일반 라우팅, 성공확률 80%, 실패 후 성공확률 100% 고정
+            # step1. 방향결정
+            if (cur_sat == vertical_line and cur_orbit != dest_orbit) or cur_sat == dest_sat:
+                if cur_orbit > dest_orbit:
+                    direction = "left"
+                else:
+                    direction = "right"
+            else:
+                if cur_sat > dest_sat:
+                    direction = "up"
+                else:
+                    direction = "down"
+            # step2. 성공/실패 결정 80%로 성공, 실패 후 성공확률 100% 고정
+            if not already_failure:
+                success = random.choices([True, False], weights=[0.8, 0.2])[0]
+            else:
+                success = True
+            # step3. 성공/실패에 따른 알고리즘 분리
+            if success: # 성공
+                if direction == "up":
+                    cur_sat -= 1
+                elif direction == "down":
+                    cur_sat += 1
+                elif direction == "left":
+                    cur_orbit -= 1
+                else: # direction == "right"
+                    cur_orbit += 1
+            else: # 실패
+                print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
+                already_failure = True
+                selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest)
+                if direction in ["up", "down"]:
+                    if cur_orbit == 0:
+                        cur_orbit += 1
+                    else:
+                        cur_orbit -= 1
+                else: # direction in ["up","down"]
+                    if cur_sat == 0:
+                        cur_sat += 1
+                    else:
+                        cur_sat -= 1
+                print("move instantly to", mhr[cur_sat][cur_orbit].id)
+
+            #
+            # if not success:
+            # if direction > 0:
+            #     if cur_sat > dest_sat:
+            #         # if src.link_state[0] == '0':
+            #         if success:
+            #             print("up")
+            #             cur_sat -= 1
+            #     else:
+            #         # if src.link_state[1] == '0':
+            #         if success:
+            #             print("down")
+            #             cur_sat += 1
+            #     if not success:
+            #         if cur_orbit == 0:
+            #             cur_orbit += 1
+            #         else:
+            #             cur_orbit -= 1
+            # else:
+            #     if cur_orbit > dest_orbit:
+            #         # if src.link_state[2] == '0':
+            #         if success:
+            #             print("left")
+            #             cur_orbit -= 1
+            #     else:
+            #         # if src.link_state[3] == '0':
+            #         if success:
+            #             print("right")
+            #             cur_orbit += 1
+            #     if not success:
+            #         if cur_sat == 0:
+            #             cur_sat += 1
+            #         else:
+            #             cur_sat -= 1
+
+            # if not success:
+            #     already_failure = True
+            #     selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest)
+
+    path.append(mhr[cur_sat][cur_orbit])
+
+    # 경로 리턴 path <List<Satellite>>
+    return path
+
+def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fail_orbit, destination, failed_direction):
+    if fail_sat == src_sat or fail_orbit == src_orbit: #fail_sat mhr이 src_sat mhr과 맡닿을경우
+        if failed_direction is "up":
+            if fail_orbit < dest_orbit:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "right"
+            elif fail_orbit > dest_orbit:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "left"
+        elif failed_direction is "down":
+            if fail_orbit < dest_orbit:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "right"
+            elif fail_orbit > dest_orbit:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "left"
+        elif failed_direction is "right":
+            if fail_sat < dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
+            elif fail_sat > dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
+        elif failed_direction is "left":
+            if fail_sat < dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
+            elif fail_sat > dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
+
+    elif fail_sat == dest_sat or fail_orbit == dest_orbit: #fail_sat이 dest_sat과 linear하여 selective flood가 필요할 때
+        if failed_direction is "up":
+            if fail_orbit < src_orbit:
+                for sat in range(fail_sat,src_sat):
+                    mhr[sat][fail_orbit+1].detourTable[destination.id] = "up"
+            elif fail_orbit > src_orbit:
+                for sat in range(fail_sat,src_sat):
+                    mhr[sat][fail_orbit-1].detourTable[destination.id] = "up"
+        elif failed_direction is "down":
+            if fail_orbit < src_orbit:
+                for sat in range(src_sat, fail_sat):
+                    mhr[sat][fail_orbit+1].detourTable[destination.id] = "down"
+            elif fail_orbit > src_orbit:
+                for sat in range(src_sat,fail_sat):
+                    mhr[sat][fail_orbit-1].detourTable[destination.id] = "down"
+        elif failed_direction is " left":
+            if fail_sat < src_sat:
+                for orbit in range(fail_orbit,src_orbit):
+                    mhr[fail_sat+1][orbit].detourTable[destination.id] = "left"
+            if fail_sat > src_sat:
+                for orbit in range(fail_orbit,src_orbit):
+                    mhr[fail_sat-1][orbit].detourTable[destination.id] = "left"
+        elif failed_direction is " right":
+            if fail_sat < src_sat:
+                for orbit in range(src_orbit,fail_orbit):
+                    mhr[fail_sat+1][orbit].detourTable[destination.id] = "left"
+            if fail_sat > src_sat:
+                for orbit in range(src_orbit,fail_orbit):
+                    mhr[fail_sat-1][orbit].detourTable[destination.id] = "left"
 
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
     # 이전 알고리즘 : 8방향
@@ -27,7 +277,7 @@ def TEW(sat, cur_info, dest_info, orbitNum, satNum):
         # elif horizontal < 0:  # 위로, 서로!!
         #     return sat.orbit.orbits[left].satellites[up]
         # else:  # 위로
-            return sat.orbit.orbits[cur_info["orbit"]].satellites[up]
+        return sat.orbit.orbits[cur_info["orbit"]].satellites[up]
 
     elif vertical < 0:
         # if horizontal > 0:  # 아래로, 동으로!!
@@ -35,7 +285,7 @@ def TEW(sat, cur_info, dest_info, orbitNum, satNum):
         # elif horizontal < 0:  # 아래로, 서로!!
         #     return sat.orbit.orbits[left].satellites[down]
         # else:  # 아래로
-            return sat.orbit.orbits[cur_info["orbit"]].satellites[down]
+        return sat.orbit.orbits[cur_info["orbit"]].satellites[down]
     else:
         if horizontal > 0:  # 동으로
             return sat.orbit.orbits[right].satellites[cur_info["satellite"]]

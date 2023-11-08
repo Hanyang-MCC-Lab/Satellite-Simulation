@@ -79,8 +79,12 @@ class Satellite:
     x, y, z = 0, 0, 0
     state = None
     distance = None
+    # 상하좌우에 대한 연결상태, 1=안됨, 0=됨
+    link_state = "0000"
+    detourTable = {}
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
+        self.link_state = "0000"
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
@@ -101,6 +105,13 @@ class Satellite:
         else:
             self.state = 'down'
         self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
+
+    def change_link_state(self, index):
+        if self.link_state[index] == "0":
+            self.link_state[index] = "1"
+        else:
+            self.link_state[index] = "0"
+
 
     # 위성의 LLH를 GET하는 메소드, 다만 라디안으로 저장되어 있어 일반 degree로 변환이 필요함(지금은 안되어 있음)
     def get_llh_info(self):
@@ -157,22 +168,39 @@ class Satellite:
             return path
         else:
             cur_info = self.get_ecef_info()
-            available_list = []
-            available_list_ecef = []
+            # available_list = []
+            # available_list_ecef = []
             # 통신 가능 위성 취합 => available list
-            for orb in constellations[0]:
-                for hop in orb.satellites:
-                    # and (hop.orbit or self.state == hop.state) 인클 디클 고려 조건
-                    # if hop != self and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
-                    if hop != self:
-                        available_list.append(hop)
-                        available_list_ecef.append(hop.get_ecef_info())
+            # for orb in constellations[0]:
+            #     for hop in orb.satellites:
+            #         # and (hop.orbit or self.state == hop.state) 인클 디클 고려 조건
+            #         # if hop != self and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
+            #         if hop != self:
+            #             available_list.append(hop)
+            #             available_list_ecef.append(hop.get_ecef_info())
             # 최적 위성 탐색
             # next_hop = MDD(self, destination, available_list)
             # next_hop = MDA(self, destination, available_list)
-            next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
+            # next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
+            next_hop = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0])
 
-            return next_hop.transfer(destination, path)
+            return next_hop
+
+    def transmit(self, nextHop):
+        nextHop.packetList = self.packetList
+        print("next hop : ",nextHop.id)
+        self.packetList = []
+
+
+class Packet:
+    src = None
+    dst = None
+    detourFlag = False
+
+    def __init__(self, src:Satellite, dst:Satellite, detour):
+        self.src = src.id
+        self.dst = dst.id
+        self.detourFlag = detour
 
 
 class Network:
@@ -365,7 +393,8 @@ def Run(r):
 
 def Route(t):
     t.text = "Routing"
-    simulator.random_N_to_M_simulation(Count(cont))
+    # simulator.random_N_to_M_simulation(Count(cont))
+    simulator.one_to_one()
     t.text = "Route"
     log_list = ["None"]
     for i in simulator.network.log:
@@ -413,7 +442,7 @@ def chooseLog(m):
 # 이중for문을 통하여 궤도 및 위성 배치 함수
 def deploy(inc, axis, color):
     orbits = []
-    if int(math.degrees(inc)) == 90:
+    if int(math.degrees(inc)) >= 89:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, (orbitRot * i)/2, color))
     else:
@@ -452,8 +481,8 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 # 입력 GUI구성
 running = True
 setting = True
-scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
-# "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
+# scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
+scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance        /     Source     / Destination\n\n"
 
 n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
@@ -462,9 +491,9 @@ s = winput(bind=SatNum, width=120, type="numeric")
 m = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
-# q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
-# d = winput(bind=Dst, width=120, type="string")
-cont = winput(bind=Mto1, width=120, type="numeric")
+q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
+d = winput(bind=Dst, width=120, type="string")
+# cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
 button(text="Seoul -> LA (veta)", bind=seoul_to_la)
 scene.append_to_caption("\n\n Routing result list  :  ")
@@ -478,12 +507,12 @@ orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
 veta_results = []
-seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
-                       math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
-                       math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
-losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
-                       math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
-                       math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
+# seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
+#                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
+#                        math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
+# losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
+#                        math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
+#                        math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
 while 1:
 
     while setting == False:
