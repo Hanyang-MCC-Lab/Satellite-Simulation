@@ -81,7 +81,7 @@ class Satellite:
     distance = None
     # 상하좌우에 대한 연결상태, 1=안됨, 0=됨
     link_state = "0000"
-    detourTable = []
+    detourTable = {}
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.link_state = "0000"
