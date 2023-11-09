@@ -80,10 +80,13 @@ class Satellite:
     state = None
     # distance = None
     # 상하좌우에 대한 연결상태, 1=안됨, 0=됨
-    link_state = "0000"
+    # link_state = "0000"
+    failed_state = False
     detourTable = {}
+    direction = None
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
+        self.failed_state = False
         self.link_state = "0000"
         self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
@@ -99,6 +102,9 @@ class Satellite:
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 설정
+        self.direction = text(text='->', pos=vec(self.y+200, self.z+200, self.x), axis=vec(1,0,0),align='center', height=300,
+          color=color.cyan, billboard=False, emissive=True, depth=0.15)
+        self.direction.height=0
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
         # 상승/하강 상태
         if math.degrees(theta) >= 270 or math.degrees(theta) <= 90:
@@ -313,9 +319,12 @@ class RoutingSimulator:
                 i.sphere_attr.color = color.orange
             elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"])-1:
                 i.sphere_attr.color = color.purple
+            elif i.failed_state == True:
+                i.sphere_attr.color = color.red
             else:
                 i.sphere_attr.color = color.cyan
             i.sphere_attr.radius = 120
+            i.direction.height = 300
             # i.distance.visible = True
 
     def reset_GUI(self):
@@ -323,6 +332,7 @@ class RoutingSimulator:
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
+                j.direction.height = 0
                 # j.distance.visible = False
 
     def print_log(self):
@@ -487,7 +497,7 @@ lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth
               color=color.blue)
 lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
               color=color.green)
-t3 = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
+vernal_equinox = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
           color=color.cyan, billboard=True, emissive=True, depth=0.15)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 
