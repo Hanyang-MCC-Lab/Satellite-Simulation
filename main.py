@@ -309,11 +309,13 @@ class RoutingSimulator:
         return 0
 
     def show_result_to_GUI(self, index):
+        vector_list = []
         for i in range(len(self.network.log)):
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
                 # j.distance.visible = False
+
         for i in self.network.log[index]["path"]:
             if self.network.log[index]["path"].index(i) == 0:
                 i.sphere_attr.color = color.orange
@@ -325,7 +327,17 @@ class RoutingSimulator:
                 i.sphere_attr.color = color.cyan
             i.sphere_attr.radius = 120
             i.direction.height = 300
-            # i.distance.visible = True
+
+        for i in self.network.log[index]["path"]:
+            vector_list.append(vec(i.get_ecef_info()[1],i.get_ecef_info()[2],i.get_ecef_info()[0]))
+        moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green)
+        dt = 0.01
+        for i in range(len(vector_list) - 1):
+            t = 0.0
+            while t <= 1.0:
+                rate(300)
+                moving_dot.pos = vector_list[i] + t * (vector_list[i + 1]-vector_list[i])
+                t += dt
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
@@ -518,11 +530,11 @@ q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
 d = winput(bind=Dst, width=120, type="string")
 # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
-button(text="Seoul -> LA (veta)", bind=seoul_to_la)
+# button(text="Seoul -> LA (veta)", bind=seoul_to_la)
 button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
-scene.append_to_caption("\n\n connection visible")
+# scene.append_to_caption("\n\n connection visible")
 # checkbox(bind=func_visible, checked=True) # text to right of checkbox
 
 
