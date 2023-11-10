@@ -80,10 +80,13 @@ class Satellite:
     state = None
     # distance = None
     # 상하좌우에 대한 연결상태, 1=안됨, 0=됨
-    link_state = "0000"
+    # link_state = "0000"
+    failed_state = False
     detourTable = {}
+    direction = None
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
+        self.failed_state = False
         self.link_state = "0000"
         self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
@@ -99,6 +102,9 @@ class Satellite:
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 설정
+        self.direction = text(text='->', pos=vec(self.y+200, self.z+200, self.x), axis=vec(1,0,0),align='center', height=300,
+          color=color.cyan, billboard=False, emissive=True, depth=0.15)
+        self.direction.height=0
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
         # 상승/하강 상태
         if math.degrees(theta) >= 270 or math.degrees(theta) <= 90:
@@ -303,26 +309,61 @@ class RoutingSimulator:
         return 0
 
     def show_result_to_GUI(self, index):
+        vector_list = []
+        packet_line_list = []
+
         for i in range(len(self.network.log)):
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
                 # j.distance.visible = False
+
         for i in self.network.log[index]["path"]:
             if self.network.log[index]["path"].index(i) == 0:
                 i.sphere_attr.color = color.orange
             elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"])-1:
                 i.sphere_attr.color = color.purple
+            elif i.failed_state == True:
+                i.sphere_attr.color = color.red
             else:
                 i.sphere_attr.color = color.cyan
             i.sphere_attr.radius = 120
-            # i.distance.visible = True
+            i.direction.height = 300
+
+        #vec list appending
+        for i in self.network.log[index]["path"]:
+            vector_list.append(vec(i.get_ecef_info()[1],i.get_ecef_info()[2],i.get_ecef_info()[0]))
+
+        #packet line appending / lining
+        for i in range(len(vector_list) - 1):
+            line = arrow(pos=vector_list[i], axis=vector_list[i+1] - vector_list[i], shaftwidth=50, headwidth=300, headlength=300,
+                      length=mag(vector_list[i+1] - vector_list[i]),
+                      color=color.green, opacity=1)
+            packet_line_list.append(line)
+
+        #moving dot moving
+        moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green, opacity=1)
+        dt = 0.01
+        for i in range(len(vector_list) - 1):
+            t = 0.0
+            while t <= 1.0:
+                rate(300)
+                moving_dot.pos = vector_list[i] + t * (vector_list[i + 1]-vector_list[i])
+                t += dt
+
+        #packet line hiding
+        for i in range(len(vector_list) - 1):
+            packet_line_list[i].opacity = 0
+
+        #moving dot hiding
+        moving_dot.opacity = 0
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
+                j.direction.height = 0
                 # j.distance.visible = False
 
     def print_log(self):
@@ -486,7 +527,7 @@ lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth
               color=color.blue)
 lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
               color=color.green)
-t3 = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
+vernal_equinox = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
           color=color.cyan, billboard=True, emissive=True, depth=0.15)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 
@@ -507,7 +548,7 @@ q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
 d = winput(bind=Dst, width=120, type="string")
 # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
-button(text="Seoul -> LA (veta)", bind=seoul_to_la)
+# button(text="Seoul -> LA (veta)", bind=seoul_to_la)
 button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
@@ -522,7 +563,6 @@ menu_choice = 0
 failure_possible = True
 veta_results = []
 # seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
-#
 #                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
 # losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
