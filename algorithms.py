@@ -81,7 +81,7 @@ def get_optimal_row_line(mhr):
             best_latitude = temp
     print(best_latitude_line)
     return best_latitude_line
-def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation):
+def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation, possiblity):
     print(src.id, "to", dest.id)
     mhr, src_sat, src_orbit, dest_sat, dest_orbit = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
                                                                        constellation)
@@ -92,7 +92,7 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
         for j in i:
             print(j.id, end=" ")
         print()
-    already_failure = False
+    already_failure = possiblity
     dest_info = dest.get_llh_info()
     cur_sat, cur_orbit = src_sat, src_orbit
     while cur_sat != dest_sat or cur_orbit != dest_orbit: # 경로의 마지막이 destination일 때까지

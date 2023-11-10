@@ -186,7 +186,7 @@ class Satellite:
             # next_hop = MDD(self, destination, available_list)
             # next_hop = MDA(self, destination, available_list)
             # next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
-            next_hop = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0])
+            next_hop = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0], failure_possible)
 
             return next_hop
 
@@ -389,13 +389,12 @@ def get_perpendicular_vector(point_coordinates):
     return perpendicular_vector
 
 
-# def func_visible(r):
-#     if r.checked:
-#         for i in simulator.network.log[menu_choice]["path"]:
-#             i.distance.opacity = 0.1
-#     else:
-#         for i in simulator.network.log[menu_choice]["path"]:
-#             i.distance.opacity = 0
+def func_visible(r):
+    global failure_possible
+    if r.checked:
+        failure_possible = False
+    else:
+        failure_possible = True
 
 def Inc(i):
     return i.number
@@ -550,14 +549,15 @@ button(text="Route", bind=Route)
 button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
-# scene.append_to_caption("\n\n connection visible")
-# checkbox(bind=func_visible, checked=True) # text to right of checkbox
+scene.append_to_caption("\n\n failure possible")
+checkbox(bind=func_visible, checked=True) # text to right of checkbox
 
 
 # 메인
 orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
+failure_possible = True
 veta_results = []
 # seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
 #                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
