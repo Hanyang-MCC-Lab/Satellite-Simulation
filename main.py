@@ -550,30 +550,7 @@ scene.resizable = False
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
 polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
-seam = curve(color = color.cyan, radius = 50)
-seam.append(vec(0,math.sin(math.radians(90)) * (CONST_EARTH_RADIUS+1000),0),
-            vec(math.cos(math.radians(67)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
-                math.sin(math.radians(67)) * (CONST_EARTH_RADIUS + 1000),
-                math.cos(math.radians(67)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
-            vec(math.cos(math.radians(45)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
-                math.sin(math.radians(45)) * (CONST_EARTH_RADIUS + 1000),
-                math.cos(math.radians(45)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
-            vec(math.cos(math.radians(23)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
-                math.sin(math.radians(23)) * (CONST_EARTH_RADIUS + 1000),
-                math.cos(math.radians(23)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
-            vec(math.cos(math.radians(0)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
-                math.sin(math.radians(0)) * (CONST_EARTH_RADIUS + 1000),
-                math.cos(math.radians(0)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
-            vec(math.cos(math.radians(-23)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
-                math.sin(math.radians(-23)) * (CONST_EARTH_RADIUS + 1000),
-                math.cos(math.radians(-23)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
-            vec(math.cos(math.radians(-45)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 500),
-                math.sin(math.radians(-45)) * (CONST_EARTH_RADIUS + 1000),
-                math.cos(math.radians(-45)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
-            vec(math.cos(math.radians(-67)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
-                math.sin(math.radians(-67)) * (CONST_EARTH_RADIUS + 1000),
-                math.cos(math.radians(-67)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
-            vec(0,math.sin(math.radians(-90)) * (CONST_EARTH_RADIUS+1000),0))
+seam = ring(pos=vec(0,0,0), axis=vec(math.cos(math.radians(15)),0,math.sin(math.radians(15))), radius= CONST_EARTH_RADIUS+780, thickness = 50, color = color.magenta)
 
 # 입력 GUI구성
 running = True
