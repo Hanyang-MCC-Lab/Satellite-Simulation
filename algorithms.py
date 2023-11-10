@@ -98,6 +98,7 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                                                                        constellation)
     vertical_line = get_optimal_row_line(mhr, src_sat)
     path = []
+    fail_info = []
     count = 0
     print("===MHR===")
     for i in mhr:
@@ -158,16 +159,15 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                     cur_orbit += 1
             else: # 실패
                 print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
-                mhr[cur_sat][cur_orbit].failed_state = True
-                # if direction == "up":
-                #     path.append(mhr[cur_sat-1][cur_orbit])
-                # elif direction == "down":
-                #     path.append(mhr[cur_sat+1][cur_orbit])
-                # elif direction == "left":
-                #     path.append(mhr[cur_sat][cur_orbit-1])
-                # else:
-                #     path.append(mhr[cur_sat][cur_orbit+1])
-                # path.append(mhr[cur_sat][cur_orbit])
+                fail_info = [mhr[cur_sat][cur_orbit]]
+                if direction == "up":
+                    fail_info.append(mhr[cur_sat-1][cur_orbit])
+                elif direction == "down":
+                    fail_info.append(mhr[cur_sat+1][cur_orbit])
+                elif direction == "left":
+                    fail_info.append(mhr[cur_sat][cur_orbit-1])
+                else:
+                    fail_info.append(mhr[cur_sat][cur_orbit+1])
                 selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest, direction)
                 if direction in ["up", "down"]:
                     if cur_orbit < dest_orbit:
@@ -185,8 +185,8 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
 
     path.append(mhr[cur_sat][cur_orbit])
 
-    # 경로 리턴 path <List<Satellite>>
-    return path
+    # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
+    return path, fail_info
 
 def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fail_orbit, destination, failed_direction):
     if fail_sat == src_sat and fail_orbit == dest_orbit: #코너 경우1
