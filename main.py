@@ -524,16 +524,42 @@ scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
 scene.resizable = False
 
 # xy평면과 x, y, z축 pos=vec(y방향, z방향, x방향)
-mybox = box(pos=vec(0, 0, 0), length=30000, height=1, width=30000, opacity=0.5)
-lineX = arrow(pos=vec(-15000, 0, 0), axis=vec(1, 0, 0), shaftwidth=50, headwidth=300, headlength=300, length=30000,
-              color=color.magenta)
-lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth=300, headlength=300, length=30000,
-              color=color.blue)
-lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
-              color=color.green)
-vernal_equinox = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
-          color=color.cyan, billboard=True, emissive=True, depth=0.15)
+# mybox = box(pos=vec(0, 0, 0), length=30000, height=1, width=30000, opacity=0.5)
+# lineX = arrow(pos=vec(-15000, 0, 0), axis=vec(1, 0, 0), shaftwidth=50, headwidth=300, headlength=300, length=30000,
+#               color=color.magenta)
+# lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth=300, headlength=300, length=30000,
+#               color=color.blue)
+# lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
+#               color=color.green)
+# vernal_equinox = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
+#           color=color.cyan, billboard=True, emissive=True, depth=0.15)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
+polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
+polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
+seam = curve(color = color.cyan, radius = 50)
+seam.append(vec(0,math.sin(math.radians(90)) * (CONST_EARTH_RADIUS+1000),0),
+            vec(math.cos(math.radians(67)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
+                math.sin(math.radians(67)) * (CONST_EARTH_RADIUS + 1000),
+                math.cos(math.radians(67)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
+            vec(math.cos(math.radians(45)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
+                math.sin(math.radians(45)) * (CONST_EARTH_RADIUS + 1000),
+                math.cos(math.radians(45)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
+            vec(math.cos(math.radians(23)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
+                math.sin(math.radians(23)) * (CONST_EARTH_RADIUS + 1000),
+                math.cos(math.radians(23)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
+            vec(math.cos(math.radians(0)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
+                math.sin(math.radians(0)) * (CONST_EARTH_RADIUS + 1000),
+                math.cos(math.radians(0)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
+            vec(math.cos(math.radians(-23)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
+                math.sin(math.radians(-23)) * (CONST_EARTH_RADIUS + 1000),
+                math.cos(math.radians(-23)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
+            vec(math.cos(math.radians(-45)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 500),
+                math.sin(math.radians(-45)) * (CONST_EARTH_RADIUS + 1000),
+                math.cos(math.radians(-45)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
+            vec(math.cos(math.radians(-67)) * math.sin(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000),
+                math.sin(math.radians(-67)) * (CONST_EARTH_RADIUS + 1000),
+                math.cos(math.radians(-67)) * math.cos(math.radians(-15)) * (CONST_EARTH_RADIUS + 1000)),
+            vec(0,math.sin(math.radians(-90)) * (CONST_EARTH_RADIUS+1000),0))
 
 # 입력 GUI구성
 running = True
