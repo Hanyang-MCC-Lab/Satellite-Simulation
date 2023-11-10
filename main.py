@@ -344,13 +344,17 @@ class RoutingSimulator:
             packet_line_list.append(line)
 
         # failure pointing & lining
-        fail_sat1_info = vec(fail_info[0].get_ecef_info()[1],fail_info[0].get_ecef_info()[2],fail_info[0].get_ecef_info()[0])
-        fail_sat2_info = vec(fail_info[1].get_ecef_info()[1],fail_info[1].get_ecef_info()[2],fail_info[1].get_ecef_info()[0])
-        fail_point = sphere(pos=fail_sat1_info, radius=150, color=color.red, opacity=1)
-        fail_line = arrow(pos=fail_sat1_info, axis=fail_sat2_info - fail_sat1_info, shaftwidth=50, headwidth=0,
-                     headlength=0,
-                     length=mag(fail_sat2_info - fail_sat1_info),
-                     color=color.red, opacity=1)
+        is_fail = False
+        if len(fail_info) != 0:
+            is_fail = True
+        if is_fail:
+            fail_sat1_info = vec(fail_info[0].get_ecef_info()[1],fail_info[0].get_ecef_info()[2],fail_info[0].get_ecef_info()[0])
+            fail_sat2_info = vec(fail_info[1].get_ecef_info()[1],fail_info[1].get_ecef_info()[2],fail_info[1].get_ecef_info()[0])
+            fail_point = sphere(pos=fail_sat1_info, radius=150, color=color.red, opacity=1)
+            fail_line = arrow(pos=fail_sat1_info, axis=fail_sat2_info - fail_sat1_info, shaftwidth=50, headwidth=0,
+                         headlength=0,
+                         length=mag(fail_sat2_info - fail_sat1_info),
+                         color=color.red, opacity=1)
 
 
         #moving dot moving
@@ -370,8 +374,11 @@ class RoutingSimulator:
         #moving dot hiding
         moving_dot.opacity = 0
 
-        #fail dot hiding
-        fail_point.opacity = 0
+        if is_fail:
+            #moving dot hiding
+            fail_point.opacity = 0
+            #fail dot hiding
+            fail_line.opacity = 0
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
