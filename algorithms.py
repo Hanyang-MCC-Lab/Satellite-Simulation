@@ -186,7 +186,8 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
     path.append(mhr[cur_sat][cur_orbit])
 
     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
-    return path, fail_info
+    # return path, fail_info
+    return path
 
 def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fail_orbit, destination, failed_direction):
     if fail_sat == src_sat and fail_orbit == dest_orbit: #코너 경우1
