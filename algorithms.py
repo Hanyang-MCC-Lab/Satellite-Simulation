@@ -123,17 +123,13 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
             if (cur_sat == vertical_line and cur_orbit != dest_orbit) or (cur_sat == dest_sat and math.fabs(cur_lat) <= 70):
                 if cur_orbit > dest_orbit:
                     direction = "left"
-                    mhr[cur_sat][cur_orbit].direction.axis = vec(-1,0,0)
                 else:
                     direction = "right"
-                    mhr[cur_sat][cur_orbit].direction.axis = vec(1, 0, 0)
             else:
                 if cur_sat > dest_sat:
                     direction = "up"
-                    mhr[cur_sat][cur_orbit].direction.axis = vec(0, 1, 0)
                 else:
                     direction = "down"
-                    mhr[cur_sat][cur_orbit].direction.axis = vec(0, -1, 0)
             # step2. 성공/실패 결정 80%로 성공, 실패 후 성공확률 100% 고정
             if not already_failure:
                 success = random.choices([True, False], weights=[0.8, 0.2])[0]
@@ -156,17 +152,13 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                 selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest, direction)
                 if direction in ["up", "down"]:
                     if cur_orbit == 0:
-                        mhr[cur_sat][cur_orbit].direction.axis = vec(1, 0, 0)
                         cur_orbit += 1
                     else:
-                        mhr[cur_sat][cur_orbit].direction.axis = vec(-1, 0, 0)
                         cur_orbit -= 1
                 else: # direction in ["up","down"]
                     if cur_sat == 0:
-                        mhr[cur_sat][cur_orbit].direction.axis = vec(0, -1, 0)
                         cur_sat += 1
                     else:
-                        mhr[cur_sat][cur_orbit].direction.axis = vec(0, 1, 0)
                         cur_sat -= 1
                 print("move instantly to", mhr[cur_sat][cur_orbit].id)
 
