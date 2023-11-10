@@ -325,8 +325,8 @@ class RoutingSimulator:
                 i.sphere_attr.color = color.orange
             elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"])-1:
                 i.sphere_attr.color = color.purple
-            elif i.failed_state == True:
-                i.sphere_attr.color = color.red
+            # elif i.failed_state == True:
+            #     i.sphere_attr.color = color.red
             else:
                 i.sphere_attr.color = color.cyan
             i.sphere_attr.radius = 120
@@ -337,7 +337,7 @@ class RoutingSimulator:
 
         #packet line appending / lining
         for i in range(len(vector_list) - 1):
-            line = arrow(pos=vector_list[i], axis=vector_list[i+1] - vector_list[i], shaftwidth=50, headwidth=300, headlength=300,
+            line = arrow(pos=vector_list[i], axis=vector_list[i+1] - vector_list[i], shaftwidth=50, headwidth=200, headlength=200,
                       length=mag(vector_list[i+1] - vector_list[i]),
                       color=color.green, opacity=1)
             packet_line_list.append(line)
@@ -557,15 +557,16 @@ button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 scene.append_to_caption("\n\n failure index")
-checkbox(bind=func_visible, checked=True) # text to right of checkbox
+checkbox(bind=func_visible, checked=False) # text to right of checkbox
 fi = winput(bind="fail_idx_input", width=50, type="numeric")
+fi.disabled = True
 
 # 메인
 orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
 veta_results = []
-fail_available = True
+fail_available = False
 # seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
 #                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)

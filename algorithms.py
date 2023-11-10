@@ -70,22 +70,33 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
 
     return mhr, src_sat, src_orbit, dest_sat, dest_orbit
 
-def get_optimal_row_line(mhr):
-    best_latitude_line = 0
+def get_optimal_row_line(mhr, src_sat):
+    best_latitude_line = src_sat
     best_latitude = math.fabs(latitude_convert(mhr[best_latitude_line][0].get_llh_info()["lat"]))
-    for idx in range(1, len(mhr)):
+    if best_latitude >= 70:
+        start_in_polar = True
+    else:
+        start_in_polar = False
+    if src_sat == 0:
+        for_range = range(1, len(mhr))
+    else:
+        for_range = range(src_sat-1, -1, -1)
+    for idx in for_range:
         temp = math.fabs(latitude_convert(mhr[idx][0].get_llh_info()["lat"]))
-        if (best_latitude < temp < 70) or best_latitude >= 70:
-            print(idx,"is best currently(",temp,")")
+        if start_in_polar and temp < 70:
             best_latitude_line = idx
-            best_latitude = temp
-    print(best_latitude_line)
+            break
+        elif not start_in_polar:
+            if temp >= 70:
+                break
+            else:
+                best_latitude_line = idx
     return best_latitude_line
 def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation, fail_index):
     print(src.id, "to", dest.id)
     mhr, src_sat, src_orbit, dest_sat, dest_orbit = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
                                                                        constellation)
-    vertical_line = get_optimal_row_line(mhr)
+    vertical_line = get_optimal_row_line(mhr, src_sat)
     path = []
     count = 0
     print("===MHR===")
@@ -147,8 +158,16 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                     cur_orbit += 1
             else: # 실패
                 print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
-                already_failure = True
                 mhr[cur_sat][cur_orbit].failed_state = True
+                # if direction == "up":
+                #     path.append(mhr[cur_sat-1][cur_orbit])
+                # elif direction == "down":
+                #     path.append(mhr[cur_sat+1][cur_orbit])
+                # elif direction == "left":
+                #     path.append(mhr[cur_sat][cur_orbit-1])
+                # else:
+                #     path.append(mhr[cur_sat][cur_orbit+1])
+                # path.append(mhr[cur_sat][cur_orbit])
                 selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest, direction)
                 if direction in ["up", "down"]:
                     if cur_orbit < dest_orbit:
@@ -161,6 +180,7 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                     else:
                         cur_sat -= 1
                 print("move instantly to", mhr[cur_sat][cur_orbit].id)
+
         count += 1
 
     path.append(mhr[cur_sat][cur_orbit])
