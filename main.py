@@ -330,7 +330,7 @@ class RoutingSimulator:
 
         for i in self.network.log[index]["path"]:
             vector_list.append(vec(i.get_ecef_info()[1],i.get_ecef_info()[2],i.get_ecef_info()[0]))
-        moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green)
+        moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green, opacity=1)
         dt = 0.01
         for i in range(len(vector_list) - 1):
             t = 0.0
@@ -338,6 +338,7 @@ class RoutingSimulator:
                 rate(300)
                 moving_dot.pos = vector_list[i] + t * (vector_list[i + 1]-vector_list[i])
                 t += dt
+        moving_dot.opacity = 0
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
