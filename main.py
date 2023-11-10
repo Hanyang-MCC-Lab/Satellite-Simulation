@@ -310,6 +310,8 @@ class RoutingSimulator:
 
     def show_result_to_GUI(self, index):
         vector_list = []
+        packet_line_list = []
+
         for i in range(len(self.network.log)):
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
@@ -328,8 +330,18 @@ class RoutingSimulator:
             i.sphere_attr.radius = 120
             i.direction.height = 300
 
+        #vec list appending
         for i in self.network.log[index]["path"]:
             vector_list.append(vec(i.get_ecef_info()[1],i.get_ecef_info()[2],i.get_ecef_info()[0]))
+
+        #packet line appending / lining
+        for i in range(len(vector_list) - 1):
+            line = arrow(pos=vector_list[i], axis=vector_list[i+1] - vector_list[i], shaftwidth=50, headwidth=300, headlength=300,
+                      length=mag(vector_list[i+1] - vector_list[i]),
+                      color=color.green, opacity=1)
+            packet_line_list.append(line)
+
+        #moving dot moving
         moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green, opacity=1)
         dt = 0.01
         for i in range(len(vector_list) - 1):
@@ -338,6 +350,12 @@ class RoutingSimulator:
                 rate(300)
                 moving_dot.pos = vector_list[i] + t * (vector_list[i + 1]-vector_list[i])
                 t += dt
+
+        #packet line hiding
+        for i in range(len(vector_list) - 1):
+            packet_line_list[i].opacity = 0
+
+        #moving dot hiding
         moving_dot.opacity = 0
 
     def reset_GUI(self):
