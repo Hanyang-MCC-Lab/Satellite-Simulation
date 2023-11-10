@@ -136,7 +136,7 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                     mhr[cur_sat][cur_orbit].direction.axis = vec(0, -1, 0)
             # step2. 성공/실패 결정 80%로 성공, 실패 후 성공확률 100% 고정
             if not already_failure:
-                success = random.choices([True, False], weights=[0.8, 0.2])[0]
+                success = random.choices([True, False], weights=[0.7, 0.3])[0]
             else:
                 success = True
             # step3. 성공/실패에 따른 알고리즘 분리
@@ -155,14 +155,14 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                 mhr[cur_sat][cur_orbit].failed_state = True
                 selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest, direction)
                 if direction in ["up", "down"]:
-                    if cur_orbit == 0:
+                    if cur_orbit < dest_orbit:
                         mhr[cur_sat][cur_orbit].direction.axis = vec(1, 0, 0)
                         cur_orbit += 1
                     else:
                         mhr[cur_sat][cur_orbit].direction.axis = vec(-1, 0, 0)
                         cur_orbit -= 1
-                else: # direction in ["up","down"]
-                    if cur_sat == 0:
+                else: # direction in ["left","right"]
+                    if dest_sat <= cur_sat <= src_sat or cur_sat == 0:
                         mhr[cur_sat][cur_orbit].direction.axis = vec(0, -1, 0)
                         cur_sat += 1
                     else:
@@ -199,18 +199,41 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
             if fail_orbit > dest_orbit:
                 mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "left"
 
-    elif fail_sat == src_sat or fail_orbit == src_orbit: #fail_sat mhr이 src_sat mhr과 맡닿을경우
+    elif fail_sat == src_sat and fail_orbit != src_orbit: #fail_sat mhr이 src_sat mhr과 맡닿을경우
+        print("is in src line")
+        if failed_direction is "up": #코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
+            if fail_orbit > src_orbit:
+                mhr[fail_sat][fail_orbit-1].detourTable[destination.id] = "up"
+            else:
+                mhr[fail_sat][fail_orbit+1].detourTable[destination.id] = "up"
+        elif failed_direction is "down":
+            if fail_orbit > src_orbit:
+                mhr[fail_sat][fail_orbit-1].detourTable[destination.id] = "down"
+            else:
+                mhr[fail_sat][fail_orbit+1].detourTable[destination.id] = "down"
+        elif failed_direction is "right" or "left":
+            if fail_sat < dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
+            elif fail_sat > dest_sat:
+                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
+
+    elif fail_orbit == src_orbit and fail_sat != dest_sat: #fail_sat mhr이 src_sat mhr과 맡닿을경우
         print("is in src line")
         if failed_direction is "up" or "down":
             if fail_orbit < dest_orbit:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "right"
             elif fail_orbit > dest_orbit:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "left"
-        elif failed_direction is "right" or "left":
-            if fail_sat < dest_sat:
-                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
-            elif fail_sat > dest_sat:
-                mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
+        elif failed_direction is "right":  # 코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
+            if fail_sat > src_sat:
+                mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "right"
+            else:
+                mhr[fail_sat+1][fail_orbit].detourTable[destination.id] = "right"
+        elif failed_direction is "left":
+            if fail_sat > src_sat:
+                mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "left"
+            else:
+                mhr[fail_sat+1][fail_orbit].detourTable[destination.id] = "left"
 
     elif fail_sat == dest_sat or fail_orbit == dest_orbit: #fail_sat이 dest_sat과 linear하여 selective flood가 필요할 때
         if failed_direction is "up":
