@@ -102,9 +102,6 @@ class Satellite:
         self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
         self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
         # 구체 attribute 설정
-        self.direction = text(text='->', pos=vec(self.y+200, self.z+200, self.x), axis=vec(1,0,0),align='center', height=300,
-          color=color.cyan, billboard=False, emissive=True, depth=0.15)
-        self.direction.height=0
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
         # 상승/하강 상태
         if math.degrees(theta) >= 270 or math.degrees(theta) <= 90:
