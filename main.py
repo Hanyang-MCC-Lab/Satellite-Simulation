@@ -186,7 +186,12 @@ class Satellite:
             # next_hop = MDD(self, destination, available_list)
             # next_hop = MDA(self, destination, available_list)
             # next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
-            next_hop = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0], failure_possible)
+            global fail_available
+            if not fail_available:
+                fail_count = 9999
+            else:
+                fail_count = fail_idx_input(fi)
+            next_hop = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0], fail_count)
 
             return next_hop
 
@@ -325,7 +330,6 @@ class RoutingSimulator:
             else:
                 i.sphere_attr.color = color.cyan
             i.sphere_attr.radius = 120
-            i.direction.height = 300
 
         #vec list appending
         for i in self.network.log[index]["path"]:
@@ -360,8 +364,6 @@ class RoutingSimulator:
             for j in self.network.log[i]["path"]:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
-                j.direction.height = 0
-                # j.distance.visible = False
 
     def print_log(self):
         print("============log details============")
@@ -390,11 +392,16 @@ def get_perpendicular_vector(point_coordinates):
 
 
 def func_visible(r):
-    global failure_possible
+    global fail_available
     if r.checked:
-        failure_possible = False
+        fail_available = True
+        fi.disabled = False
     else:
-        failure_possible = True
+        fail_available = False
+        fi.disabled = True
+
+def fail_idx_input(fi):
+    return fi.number
 
 def Inc(i):
     return i.number
@@ -549,16 +556,16 @@ button(text="Route", bind=Route)
 button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
-scene.append_to_caption("\n\n failure possible")
+scene.append_to_caption("\n\n failure index")
 checkbox(bind=func_visible, checked=True) # text to right of checkbox
-
+fi = winput(bind="fail_idx_input", width=50, type="numeric")
 
 # 메인
 orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
-failure_possible = True
 veta_results = []
+fail_available = True
 # seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
 #                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)

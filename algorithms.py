@@ -81,18 +81,18 @@ def get_optimal_row_line(mhr):
             best_latitude = temp
     print(best_latitude_line)
     return best_latitude_line
-def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation, possiblity):
+def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellation, fail_index):
     print(src.id, "to", dest.id)
     mhr, src_sat, src_orbit, dest_sat, dest_orbit = get_minimum_hop_region(src, dest, max_orbit_num, max_sat_num,
                                                                        constellation)
     vertical_line = get_optimal_row_line(mhr)
     path = []
+    count = 0
     print("===MHR===")
     for i in mhr:
         for j in i:
             print(j.id, end=" ")
         print()
-    already_failure = possiblity
     dest_info = dest.get_llh_info()
     cur_sat, cur_orbit = src_sat, src_orbit
     while cur_sat != dest_sat or cur_orbit != dest_orbit: # 경로의 마지막이 destination일 때까지
@@ -118,7 +118,7 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
             elif detour_direction == "down":
                 cur_sat += 1
         else:
-            # 일반 라우팅, 성공확률 80%, 실패 후 성공확률 100% 고정
+            # 일반 라우팅
             # step1. 방향결정
             if (cur_sat == vertical_line and cur_orbit != dest_orbit) or (cur_sat == dest_sat and math.fabs(cur_lat) <= 70):
                 if cur_orbit > dest_orbit:
@@ -130,9 +130,9 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                     direction = "up"
                 else:
                     direction = "down"
-            # step2. 성공/실패 결정 80%로 성공, 실패 후 성공확률 100% 고정
-            if not already_failure:
-                success = random.choices([True, False], weights=[0.7, 0.3])[0]
+            # step2. 성공/실패 판독
+            if count == fail_index:
+                success = False
             else:
                 success = True
             # step3. 성공/실패에 따른 알고리즘 분리
@@ -152,17 +152,16 @@ def distributed_detour_routing(src, dest, max_orbit_num, max_sat_num, constellat
                 selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest, direction)
                 if direction in ["up", "down"]:
                     if cur_orbit < dest_orbit:
-                        mhr[cur_sat][cur_orbit].direction.axis = vec(1, 0, 0)
                         cur_orbit += 1
                     else:
                         cur_orbit -= 1
                 else: # direction in ["left","right"]
                     if dest_sat <= cur_sat <= src_sat or cur_sat == 0:
-                        mhr[cur_sat][cur_orbit].direction.axis = vec(0, -1, 0)
                         cur_sat += 1
                     else:
                         cur_sat -= 1
                 print("move instantly to", mhr[cur_sat][cur_orbit].id)
+        count += 1
 
     path.append(mhr[cur_sat][cur_orbit])
 
@@ -194,7 +193,7 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
                 mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "left"
 
     elif fail_sat == src_sat and fail_orbit != src_orbit: #fail_sat mhr이 src_sat mhr과 맡닿을경우
-        print("is in src line")
+        print("is in src sat line")
         if failed_direction is "up": #코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
             if fail_orbit > src_orbit:
                 mhr[fail_sat][fail_orbit-1].detourTable[destination.id] = "up"
@@ -205,20 +204,21 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
                 mhr[fail_sat][fail_orbit-1].detourTable[destination.id] = "down"
             else:
                 mhr[fail_sat][fail_orbit+1].detourTable[destination.id] = "down"
-        elif failed_direction is "right" or "left":
+        elif failed_direction in ["right", "left"]:
             if fail_sat < dest_sat:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "down"
             elif fail_sat > dest_sat:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
 
     elif fail_orbit == src_orbit and fail_sat != dest_sat: #fail_sat mhr이 src_sat mhr과 맡닿을경우
-        print("is in src line")
-        if failed_direction is "up" or "down":
+        print("is in src orbit line")
+        if failed_direction in ["up", "down"]:
             if fail_orbit < dest_orbit:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "right"
             elif fail_orbit > dest_orbit:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "left"
         elif failed_direction is "right":  # 코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
+            print(fail_sat, src_sat)
             if fail_sat > src_sat:
                 mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "right"
             else:
@@ -229,7 +229,7 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
             else:
                 mhr[fail_sat+1][fail_orbit].detourTable[destination.id] = "left"
 
-    elif fail_sat == dest_sat or fail_orbit == dest_orbit: #fail_sat이 dest_sat과 linear하여 selective flood가 필요할 때
+    else: #fail_sat이 dest_sat과 linear하여 selective flood가 필요할 때
         if failed_direction is "up":
             if fail_orbit < src_orbit:
                 for sat in range(fail_sat, src_sat+1):
