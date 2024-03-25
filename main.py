@@ -2,27 +2,20 @@
 import time
 import numpy as np
 import vpython
+
+from laserISL import *
+from util import update_ECEF
+
 'Web VPython 3.2'
 from vpython import *
 import pyautogui
 import math
+from parameter import *
 # 라우팅 시뮬레이터 관련
 from minimum_deflection_angle import *
 import random
 import threading
 from algorithms import *
-# 상수선언
-SEOUL_LAT, SEOUL_LON = 37.56, 126.97
-LA_LAT, LA_LON = 34.01, -118.41
-orbitNum = 72
-satNum = 22
-maxDistance = 0
-CONST_EARTH_RADIUS = 6371  # 지구반경
-orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
-satRot = math.radians(360 / satNum)  # 위성회전각도
-CONST_SAT_DT = math.radians(15)  # 위성 공전 각도
-v = vpython.color()
-CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
 
 class Orbit:
@@ -79,15 +72,22 @@ class Satellite:
     x, y, z = 0, 0, 0
     state = None
     # distance = None
-    # 상하좌우에 대한 연결상태, 1=안됨, 0=됨
-    # link_state = "0000"
+    # 상하좌우에 대한 연결상태, 1=됨, 1=안됨
+    link_state = "0000"
+    handover_timer = [0, 0, 0, 0]
+    laser_vec = [0, 0, 0, 0]
+    link_sat = []
     failed_state = False
     detourTable = {}
     direction = None
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.failed_state = False
-        self.link_state = "0000"
+        self.link_state = [1, 1, 1, 1]
+        self.handover_timer = [0, 0, 0, 0]
+        self.local_link_sat_ecef = []
+        self.local_link_sat_lla = []
+        self.link_sat = []
         self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
@@ -98,26 +98,44 @@ class Satellite:
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
                                      math.cos(theta)) + 6.2832) % 6.2832 + orbit.lon_of_ascending
         # ECEF 좌표
-        self.x = math.cos(self.latitude) * math.cos(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
-        self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
-        self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
+        self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
-        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=60, color=color.white)
-        # 상승/하강 상태
-        if math.degrees(theta) >= 270 or math.degrees(theta) <= 90:
-            self.state = 'up'
-        else:
-            self.state = 'down'
+        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=40, color=color.white)
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
+        self.check_moving_state()
+    def check_moving_state(self):
+        # 상승/하강 상태
+        if self.sphere_attr.color != color.red:
+            if math.degrees(self.true_anomaly) >= 270 or math.degrees(self.true_anomaly) <= 90:
+                self.state = 'up'
+                self.sphere_attr.color = color.orange
+            else:
+                self.state = 'down'
+                self.sphere_attr.color = color.cyan
+
+    def check_link_state(self):
+        # link
+        for i in range(len(self.link_sat)):
+            element = self.link_sat[i]
+            virtual_ele = self.local_link_sat_ecef[i]
+            real_vector = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
+            laser_vector = np.array([virtual_ele[0] - self.x, virtual_ele[1] - self.y, virtual_ele[2] - self.z])
+            angle_gap = calc_gap_of_angle(real_vector, laser_vector)
+            # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
+            # if measure > LASER_DISTANCE_THRESHOLD:
+            if max(0, angle_gap-ANGULAR_VELOCITY) > LASER_ANGLE_THRESHOLD:
+                self.sphere_attr.color = color.red
+                self.change_link_state(i)
+                self.handover_timer[i] += HANDOVER_TIME
+                pat_sat_array.append(self)
+                print("real:", real_vector, "laser:", laser_vector, "gap:", math.degrees(angle_gap))
 
     def change_link_state(self, index):
-        if self.link_state[index] == "0":
-            self.link_state[index] = "1"
+        if self.link_state[index]:
+            self.link_state[index] = 0
         else:
-            self.link_state[index] = "0"
+            self.link_state[index] = 1
 
-
-    # 위성의 LLH를 GET하는 메소드, 다만 라디안으로 저장되어 있어 일반 degree로 변환이 필요함(지금은 안되어 있음)
     def get_llh_info(self):
         info = {"ORBIT-ID": self.orbit.id,
                 "SAT-ID": self.id,
@@ -129,7 +147,6 @@ class Satellite:
 
     # 위성의 ECEF 좌표를 GET하는 메소드
     def get_ecef_info(self):
-
         return [self.x, self.y, self.z]
 
     def get_sat_info(self):
@@ -139,23 +156,35 @@ class Satellite:
                 }
         return info
 
+    def new_link(self, index):
+        re_PAT(self, self.link_sat[index], index)
+
     def refresh(self, dt):
         self.true_anomaly = math.radians((math.degrees(self.true_anomaly) + dt) % 360)
         # 위도, 경도
-        self.latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly))
-        self.longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly),
-                                     math.cos(self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending
+        delta_latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly)) - self.latitude
+        delta_longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly), math.cos(
+            self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending - self.longitude
+
+        self.latitude += delta_latitude
+        self.longitude += delta_longitude
+
         # ECEF 좌표
-        self.x = math.cos(self.latitude) * math.cos(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
-        self.y = math.cos(self.latitude) * math.sin(self.longitude) * (CONST_EARTH_RADIUS + self.altitude)
-        self.z = math.sin(self.latitude) * (CONST_EARTH_RADIUS + self.altitude)
+        self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
+
+        # 가상 인접 위성
+        index = 0
+        for element in self.local_link_sat_lla:
+            # print(self.local_link_sat_lla[i])
+            lat, lon, alt = element[0], element[1], element[2]
+            x, y, z = update_ECEF(lat + delta_latitude, lon + delta_longitude, alt + CONST_EARTH_RADIUS)
+            self.local_link_sat_ecef[index] = [x, y, z]
+            index += 1
+
         # 구체 attribute 재설정
         self.sphere_attr.pos = vec(self.y, self.z, self.x)
-        true_anom_degree = math.degrees(self.true_anomaly)
-        if true_anom_degree >= 270 or true_anom_degree <= 90:
-            self.state = 'up'
-        else:
-            self.state = 'down'
+        self.check_moving_state()
+        self.check_link_state()
         # self.distance.pos = self.sphere_attr.pos
 
     def get_great_distance(self, node_B):
@@ -191,14 +220,10 @@ class Satellite:
                 fail_count = 9999
             else:
                 fail_count = fail_idx_input(fi)
-            next_hop, fail_info = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0], fail_count)
+            next_hop, fail_info = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0],
+                                                             fail_count)
 
             return next_hop, fail_info
-
-    def transmit(self, nextHop):
-        nextHop.packetList = self.packetList
-        print("next hop : ",nextHop.id)
-        self.packetList = []
 
 
 class Packet:
@@ -206,7 +231,7 @@ class Packet:
     dst = None
     detourFlag = False
 
-    def __init__(self, src:Satellite, dst:Satellite, detour):
+    def __init__(self, src: Satellite, dst: Satellite, detour):
         self.src = src.id
         self.dst = dst.id
         self.detourFlag = detour
@@ -275,7 +300,7 @@ class RoutingSimulator:
             random_sat = np.random.randint(0, satNum)
             self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
         random.shuffle(self.randomSatList)
-        for k in range(int(count) + 1):#디버깅용
+        for k in range(int(count) + 1):  # 디버깅용
             print(self.randomSatList[k])
         for j in range(int(count)):  # 다중 라우팅 병렬처리
             self.parallelProcess.append(
@@ -287,16 +312,17 @@ class RoutingSimulator:
         self.print_log()
 
     def random_N_to_M_simulation(self, count):
-        for i in range(int(count)*2):
+        for i in range(int(count) * 2):
             random_orbit = np.random.randint(0, orbitNum)
             random_sat = np.random.randint(0, satNum)
             self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
         random.shuffle(self.randomSatList)
-        for k in range(int(count)*2): #디버깅용
+        for k in range(int(count) * 2):  # 디버깅용
             print(self.randomSatList[k])
-        for j in range(int(count)): #다중 라우팅 병렬처리
-            self.parallelProcess.append(threading.Thread(target=self.network.routing(self.randomSatList[j],self.randomSatList[int(count)+j])))
-            self.parallelProcess[j].start() #리스트 맨 마지막 위성으로 하나의 목적지 지정
+        for j in range(int(count)):  # 다중 라우팅 병렬처리
+            self.parallelProcess.append(threading.Thread(
+                target=self.network.routing(self.randomSatList[j], self.randomSatList[int(count) + j])))
+            self.parallelProcess[j].start()  # 리스트 맨 마지막 위성으로 하나의 목적지 지정
         self.parallelProcess.clear()
         self.print_log()
 
@@ -327,7 +353,7 @@ class RoutingSimulator:
         for i in self.network.log[index]["path"]:
             if self.network.log[index]["path"].index(i) == 0:
                 i.sphere_attr.color = color.orange
-            elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"])-1:
+            elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"]) - 1:
                 i.sphere_attr.color = color.purple
             # elif i.failed_state == True:
             #     i.sphere_attr.color = color.red
@@ -335,15 +361,16 @@ class RoutingSimulator:
                 i.sphere_attr.color = color.cyan
             i.sphere_attr.radius = 120
 
-        #vec list appending
+        # vec list appending
         for i in self.network.log[index]["path"]:
-            vector_list.append(vec(i.get_ecef_info()[1],i.get_ecef_info()[2],i.get_ecef_info()[0]))
+            vector_list.append(vec(i.get_ecef_info()[1], i.get_ecef_info()[2], i.get_ecef_info()[0]))
 
-        #packet line appending / lining
+        # packet line appending / lining
         for i in range(len(vector_list) - 1):
-            line = arrow(pos=vector_list[i], axis=vector_list[i+1] - vector_list[i], shaftwidth=50, headwidth=200, headlength=200,
-                      length=mag(vector_list[i+1] - vector_list[i]),
-                      color=color.green, opacity=1)
+            line = arrow(pos=vector_list[i], axis=vector_list[i + 1] - vector_list[i], shaftwidth=50, headwidth=200,
+                         headlength=200,
+                         length=mag(vector_list[i + 1] - vector_list[i]),
+                         color=color.green, opacity=1)
             packet_line_list.append(line)
 
         # failure pointing & lining
@@ -351,36 +378,37 @@ class RoutingSimulator:
         if len(self.network.fail_log[str(index)]):
             fail_sat1 = self.network.fail_log[str(index)][0]
             fail_sat2 = self.network.fail_log[str(index)][1]
-            fail_sat1_info = vec(fail_sat1.get_ecef_info()[1],fail_sat1.get_ecef_info()[2],fail_sat1.get_ecef_info()[0])
-            fail_sat2_info = vec(fail_sat2.get_ecef_info()[1],fail_sat2.get_ecef_info()[2],fail_sat2.get_ecef_info()[0])
+            fail_sat1_info = vec(fail_sat1.get_ecef_info()[1], fail_sat1.get_ecef_info()[2],
+                                 fail_sat1.get_ecef_info()[0])
+            fail_sat2_info = vec(fail_sat2.get_ecef_info()[1], fail_sat2.get_ecef_info()[2],
+                                 fail_sat2.get_ecef_info()[0])
             fail_point = sphere(pos=fail_sat1_info, radius=150, color=color.red, opacity=1)
             fail_line = arrow(pos=fail_sat1_info, axis=fail_sat2_info - fail_sat1_info, shaftwidth=50, headwidth=0,
-                         headlength=0,
-                         length=mag(fail_sat2_info - fail_sat1_info),
-                         color=color.red, opacity=1)
+                              headlength=0,
+                              length=mag(fail_sat2_info - fail_sat1_info),
+                              color=color.red, opacity=1)
 
-
-        #moving dot moving
+        # moving dot moving
         moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green, opacity=1)
         dt = 0.01
         for i in range(len(vector_list) - 1):
             t = 0.0
             while t <= 1.0:
                 rate(300)
-                moving_dot.pos = vector_list[i] + t * (vector_list[i + 1]-vector_list[i])
+                moving_dot.pos = vector_list[i] + t * (vector_list[i + 1] - vector_list[i])
                 t += dt
 
-        #packet line hiding
+        # packet line hiding
         for i in range(len(vector_list) - 1):
             packet_line_list[i].opacity = 0
 
-        #moving dot hiding
+        # moving dot hiding
         moving_dot.opacity = 0
 
         if str(index) in self.network.fail_log:
-            #fail dot hiding
+            # fail dot hiding
             fail_point.opacity = 0
-            #fail dot hiding
+            # fail dot hiding
             fail_line.opacity = 0
 
     def reset_GUI(self):
@@ -424,8 +452,10 @@ def func_visible(r):
         fail_available = False
         fi.disabled = True
 
+
 def fail_idx_input(fi):
     return fi.number
+
 
 def Inc(i):
     return i.number
@@ -472,8 +502,9 @@ def Route(t):
     t.text = "Route"
     log_list = ["None"]
     for i in simulator.network.log:
-        log_list.append(str(i["index"])+". "+i["packet"]+" (delay: "+str(i["delay"])+")")
+        log_list.append(str(i["index"]) + ". " + i["packet"] + " (delay: " + str(i["delay"]) + ")")
     routing_list_menu.choices = log_list
+
 
 def seoul_to_la(t):
     t.text = "Routing"
@@ -483,12 +514,14 @@ def seoul_to_la(t):
     log_list.append("[veta] SEOUL to LA")
     routing_list_menu.choices = log_list
 
+
 def reset_detour_table(t):
     t.text = "Ing.."
     for orbit in constellations[0]:
         for sat in orbit.satellites:
             sat.detourTable = {}
     t.text = "Reset detour tables"
+
 
 def Src(q):
     return q.text
@@ -513,7 +546,7 @@ def chooseLog(m):
         simulator.reset_GUI()
     else:
         for i in range(len(routing_list_menu.choices[1:])):
-            if m.selected == routing_list_menu.choices[i+1]:
+            if m.selected == routing_list_menu.choices[i + 1]:
                 menu_choice = i
                 break
         print(menu_choice)
@@ -525,22 +558,34 @@ def deploy(inc, axis, color):
     orbits = []
     if int(math.degrees(inc)) >= 89:
         for i in range(orbitNum):  # 궤도생성
-            orbits.append(Orbit(i, inc, axis, (orbitRot * i)/2, color))
+            orbits.append(Orbit(i, inc, axis, (orbitRot * i) / 2, color))
     else:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     constellations.append(orbits)
+    initialize_lisl(constellations[-1])
+
+
+def deploy_starlink():
+    inclination = math.radians(float(53))
+    altitude = 550
+    orbitNum = 24
+    satNum = 66
+    orbitRot = math.radians(360 / orbitNum)
+    satRot = math.radians(360 / satNum)
+    deploy(inclination, altitude, CONST_COLORS[0])
 
 
 # 클래스 끝, 메인 로직 시작
 
 # 궤도 및 위성 리스트 생성
 constellations = []
+pat_sat_array = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
 monitor_width = M_size[0]
-monitor_height = M_size[1] - 100
+monitor_height = M_size[1] - 300
 
 # 씬 구성
 # 기준 춘분점(Reference direction vector = (0, 0, 1))
@@ -558,16 +603,16 @@ scene.resizable = False
 # vernal_equinox = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
 #           color=color.cyan, billboard=True, emissive=True, depth=0.15)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
-polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
-polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
-seam = ring(pos=vec(0,0,0), axis=vec(math.cos(math.radians(15)),0,math.sin(math.radians(15))), radius= CONST_EARTH_RADIUS+780, thickness = 50, color = color.magenta)
+# polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
+# polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
+# seam = ring(pos=vec(0,0,0), axis=vec(math.cos(math.radians(15)),0,math.sin(math.radians(15))), radius= CONST_EARTH_RADIUS+780, thickness = 50, color = color.magenta)
 
 # 입력 GUI구성
 running = True
 setting = True
 # scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
-scene.caption = "\nOrbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source       / Destination\n\n"
-
+scene.caption = "\n                    Orbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source       / Destination\n\n"
+button(text="Starlink Phase1", bind=deploy_starlink)
 n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
 o = winput(bind=OrbNum, width=120, type="numeric")
@@ -575,20 +620,21 @@ s = winput(bind=SatNum, width=120, type="numeric")
 # m = winput(bind=MaxDist, width=120, type="numeric")
 button(text="Set", bind=Set)
 button(text="Run", bind=Run)
-q = winput(bind=Src, width=120, type="string") # 1 to 1 용 변수
+q = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
 d = winput(bind=Dst, width=120, type="string")
 # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
 # button(text="Seoul -> LA (veta)", bind=seoul_to_la)
-button(text="Reset detour tables", bind=reset_detour_table)
+# button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 scene.append_to_caption("\n\n failure index")
-checkbox(bind=func_visible, checked=False) # text to right of checkbox
+checkbox(bind=func_visible, checked=False)  # text to right of checkbox
 fi = winput(bind="fail_idx_input", width=50, type="numeric")
 fi.disabled = True
 
 # 메인
+time = 0
 orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
@@ -613,6 +659,7 @@ while 1:
         satRot = math.radians(360 / satNum)
         # maxDistance = MaxDist(m)
         deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
+        initialize_lisl(constellations[orbit_cnt])
         orbit_cnt = (orbit_cnt + 1) % 4
         setting = not setting
 
@@ -622,69 +669,86 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
-        for i in range(len(simulator.network.log)):
-            path = simulator.network.log[i]["path"]
-            if simulator.network.log[i]["packet"] in veta_results:
-                first_sat_llh = path[0].get_llh_info()
-                last_sat_llh = path[-1].get_llh_info()
-                print(first_sat_llh)
-                print(last_sat_llh)
-                seoul_to_first_sat = get_distance_with_lon_and_lat(SEOUL_LON, SEOUL_LAT,
-                                                                   first_sat_llh["lon"], first_sat_llh["lat"])
-                la_to_last_sat = get_distance_with_lon_and_lat(LA_LON, LA_LAT,
-                                                               last_sat_llh["lon"], last_sat_llh["lat"])
-                print(seoul_to_first_sat, la_to_last_sat)
-                # if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
-                if get_nearest_sat(SEOUL_LON, SEOUL_LAT, constellations) != path[0] or get_nearest_sat(LA_LON, LA_LAT, constellations) != path[-1]:
-                    simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-                    veta_results.remove(simulator.network.log[i]["packet"])
-                    if menu_choice == i:
-                        simulator.reset_GUI()
-                    simulator.network.log[i] = simulator.network.log[-1]
-                    simulator.network.log.pop()
-                    print(veta_results)
-                    print(veta_results)
-                    if menu_choice == i:
-                        simulator.show_result_to_GUI(i)
-                    # simulator.network.log.pop()
-                    break
-                else:
-                    before = path[0]
-                    # for current in path[1:]:
-                    #     # if current.get_great_distance(before) > maxDistance:
-                    #         print("punk!(", current.get_great_distance(before),")")
-                    #         print("before:", before.id, "current:", current.id)
-                    #         simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-                    #         veta_results.remove(simulator.network.log[i]["packet"])
-                    #         if menu_choice == i:
-                    #             simulator.reset_GUI()
-                    #         simulator.network.log[i] = simulator.network.log[-1]
-                    #         simulator.network.log.pop()
-                    #         print(veta_results)
-                    #         print(veta_results)
-                    #         if menu_choice == i:
-                    #             simulator.show_result_to_GUI(i)
-                    #         # simulator.network.log.pop()
-                    #         break
-                    #     before = current
-            else:
-                before = path[0]
-                # for current in path[1:]:
-                #     if current.get_great_distance(before) > maxDistance:
-                #         simulator.network.routing(path[0], path[-1])
-                #         if menu_choice == i:
-                #             simulator.reset_GUI()
-                #         simulator.network.log[i] = simulator.network.log[-1]
-                #         simulator.network.log.pop()
-                #         new_list = ["None"]
-                #         for j in simulator.network.log:
-                #             new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
-                #         routing_list_menu.choices = new_list
-                #         if menu_choice == i:
-                #             simulator.show_result_to_GUI(i)
-                #         break
-                #     before = current
+        for sat in pat_sat_array:
+            yet_cnt = 0
+            for index in range(len(sat.handover_timer)):
+                if sat.handover_timer[index] > 0:
+                    yet_cnt += 1
+                    sat.handover_timer[index] -= SLOT_DURATION
+                    if sat.handover_timer[index] <= 0:
+                        sat.handover_timer[index] = 0
+                        sat.change_link_state(index)
+                        sat.new_link(index)
+                        yet_cnt -= 1
+            if yet_cnt == 0:
+                sat.sphere_attr.color = color.orange if sat.state == 'up' else color.cyan
+                pat_sat_array.remove(sat)
+        time += SLOT_DURATION
         sleep(0.5)
+        print("time:", time)
+
+        # for i in range(len(simulator.network.log)):
+        #     path = simulator.network.log[i]["path"]
+        #     if simulator.network.log[i]["packet"] in veta_results:
+        #         first_sat_llh = path[0].get_llh_info()
+        #         last_sat_llh = path[-1].get_llh_info()
+        #         print(first_sat_llh)
+        #         print(last_sat_llh)
+        #         seoul_to_first_sat = get_distance_with_lon_and_lat(SEOUL_LON, SEOUL_LAT,
+        #                                                            first_sat_llh["lon"], first_sat_llh["lat"])
+        #         la_to_last_sat = get_distance_with_lon_and_lat(LA_LON, LA_LAT,
+        #                                                        last_sat_llh["lon"], last_sat_llh["lat"])
+        #         print(seoul_to_first_sat, la_to_last_sat)
+        #         # if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
+        #         if get_nearest_sat(SEOUL_LON, SEOUL_LAT, constellations) != path[0] or get_nearest_sat(LA_LON, LA_LAT, constellations) != path[-1]:
+        #             simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
+        #             veta_results.remove(simulator.network.log[i]["packet"])
+        #             if menu_choice == i:
+        #                 simulator.reset_GUI()
+        #             simulator.network.log[i] = simulator.network.log[-1]
+        #             simulator.network.log.pop()
+        #             print(veta_results)
+        #             print(veta_results)
+        #             if menu_choice == i:
+        #                 simulator.show_result_to_GUI(i)
+        #             # simulator.network.log.pop()
+        #             break
+        #         else:
+        #             before = path[0]
+        #             # for current in path[1:]:
+        #             #     # if current.get_great_distance(before) > maxDistance:
+        #             #         print("punk!(", current.get_great_distance(before),")")
+        #             #         print("before:", before.id, "current:", current.id)
+        #             #         simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
+        #             #         veta_results.remove(simulator.network.log[i]["packet"])
+        #             #         if menu_choice == i:
+        #             #             simulator.reset_GUI()
+        #             #         simulator.network.log[i] = simulator.network.log[-1]
+        #             #         simulator.network.log.pop()
+        #             #         print(veta_results)
+        #             #         print(veta_results)
+        #             #         if menu_choice == i:
+        #             #             simulator.show_result_to_GUI(i)
+        #             #         # simulator.network.log.pop()
+        #             #         break
+        #             #     before = current
+        #     else:
+        #         before = path[0]
+        #         # for current in path[1:]:
+        #         #     if current.get_great_distance(before) > maxDistance:
+        #         #         simulator.network.routing(path[0], path[-1])
+        #         #         if menu_choice == i:
+        #         #             simulator.reset_GUI()
+        #         #         simulator.network.log[i] = simulator.network.log[-1]
+        #         #         simulator.network.log.pop()
+        #         #         new_list = ["None"]
+        #         #         for j in simulator.network.log:
+        #         #             new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
+        #         #         routing_list_menu.choices = new_list
+        #         #         if menu_choice == i:
+        #         #             simulator.show_result_to_GUI(i)
+        #         #         break
+        #         #     before = current
+
         if running == True:
             break
-
