@@ -19,7 +19,7 @@ CONST_EARTH_RADIUS = 6371  # 지구반경
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
 real_rot_speed_per_second = 0.06263
-SLOT_DURATION = 1000 # 1000 = 1s
+SLOT_DURATION = 100 # 1000 = 1s
 CONST_SAT_DT = real_rot_speed_per_second * (SLOT_DURATION/1000)  # 위성 공전 각도: 1초당 회전 각도, 하루 15.03회 공전
 
 v = vpython.color()

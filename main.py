@@ -38,11 +38,9 @@ class Orbit:
         self.semi_major_axis = CONST_EARTH_RADIUS
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
         self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.3,
-                               axis=vec(math.sin(lon_of_ascending) * 0 + math.cos(lon_of_ascending) * math.sin(
-                                   -1 * inclination),
-                                        math.cos(-1 * inclination),
-                                        math.cos(lon_of_ascending) * 0 - math.sin(lon_of_ascending) * math.sin(
-                                            -1 * inclination)),
+                               axis=vec(-1*math.sin(inclination)*math.cos(lon_of_ascending),
+                                        math.cos(inclination),
+                                        math.sin(lon_of_ascending)*math.sin(inclination)),
                                color=color, thickness=15, radius=self.semi_major_axis + altitude, )
         # 위성 배치
         for idx in range(satNum):
@@ -94,11 +92,11 @@ class Satellite:
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
-                                     math.cos(theta)) + 6.2832) % 6.2832 + orbit.lon_of_ascending
+                                     math.cos(theta)) + 6.282185307) % 6.282185307 + orbit.lon_of_ascending
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
-        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), axis=vec(0, 0, 1), radius=40, color=color.white)
+        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100,100,100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
         self.check_moving_state()
     def check_moving_state(self):
