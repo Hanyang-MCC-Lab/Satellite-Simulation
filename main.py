@@ -72,10 +72,8 @@ class Satellite:
     x, y, z = 0, 0, 0
     state = None
     # distance = None
-    # 상하좌우에 대한 연결상태, 1=됨, 1=안됨
-    link_state = "0000"
-    handover_timer = [0, 0, 0, 0]
-    laser_vec = [0, 0, 0, 0]
+    handover_timer = [0, 0]
+    laser_vec = [0, 0]
     link_sat = []
     failed_state = False
     detourTable = {}
@@ -83,8 +81,8 @@ class Satellite:
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.failed_state = False
-        self.link_state = [1, 1, 1, 1]
-        self.handover_timer = [0, 0, 0, 0]
+        self.link_state = [1, 1]
+        self.handover_timer = [0, 0]
         self.local_link_sat_ecef = []
         self.local_link_sat_lla = []
         self.link_sat = []
@@ -116,19 +114,23 @@ class Satellite:
     def check_link_state(self):
         # link
         for i in range(len(self.link_sat)):
-            element = self.link_sat[i]
-            virtual_ele = self.local_link_sat_ecef[i]
-            real_vector = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
-            laser_vector = np.array([virtual_ele[0] - self.x, virtual_ele[1] - self.y, virtual_ele[2] - self.z])
-            angle_gap = calc_gap_of_angle(real_vector, laser_vector)
-            # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
-            # if measure > LASER_DISTANCE_THRESHOLD:
-            if max(0, angle_gap-ANGULAR_VELOCITY) > LASER_ANGLE_THRESHOLD:
-                self.sphere_attr.color = color.red
-                self.change_link_state(i)
-                self.handover_timer[i] += HANDOVER_TIME
-                pat_sat_array.append(self)
-                print("real:", real_vector, "laser:", laser_vector, "gap:", math.degrees(angle_gap))
+            if self.link_state[i] == 1:
+                element = self.link_sat[i]
+                virtual_ele = self.local_link_sat_ecef[i]
+                real_vector = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
+                laser_vector = np.array([virtual_ele[0] - self.x, virtual_ele[1] - self.y, virtual_ele[2] - self.z])
+                angle_gap = calc_gap_of_angle(real_vector, laser_vector)
+                # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
+                # if measure > LASER_DISTANCE_THRESHOLD:
+                if max(0, angle_gap-ANGULAR_VELOCITY) > LASER_ANGLE_THRESHOLD:
+                    self.sphere_attr.color = color.red
+                    self.change_link_state(i)
+                    self.handover_timer[i] += HANDOVER_TIME
+                    pat_sat_array.append(self)
+                    print("real:", real_vector, "laser:", laser_vector, "gap:", angle_gap)
+                else:
+                    self.new_link(i)
+
 
     def change_link_state(self, index):
         if self.link_state[index]:

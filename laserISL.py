@@ -37,16 +37,16 @@ def initialize_lisl(constellation):
     for i in range(orbit_num):
         for j in range(sat_num):
             cur_sat = constellation[i].satellites[j]
-            # intra-orbit
-            if j == 0:
-                PAT(cur_sat, constellation[i].satellites[j + 1])
-                PAT(cur_sat, constellation[i].satellites[sat_num - 1])
-            elif j == sat_num - 1:
-                PAT(cur_sat, constellation[i].satellites[0])
-                PAT(cur_sat, constellation[i].satellites[j - 1])
-            else:
-                PAT(cur_sat, constellation[i].satellites[j + 1])
-                PAT(cur_sat, constellation[i].satellites[j - 1])
+            # # intra-orbit
+            # if j == 0:
+            #     PAT(cur_sat, constellation[i].satellites[j + 1])
+            #     PAT(cur_sat, constellation[i].satellites[sat_num - 1])
+            # elif j == sat_num - 1:
+            #     PAT(cur_sat, constellation[i].satellites[0])
+            #     PAT(cur_sat, constellation[i].satellites[j - 1])
+            # else:
+            #     PAT(cur_sat, constellation[i].satellites[j + 1])
+            #     PAT(cur_sat, constellation[i].satellites[j - 1])
             # inter-orbit
             if i == 0:
                 PAT(cur_sat, constellation[orbit_num - 1].satellites[j])
