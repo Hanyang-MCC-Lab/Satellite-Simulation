@@ -1,47 +1,71 @@
+import csv
 import math
+import os
 
 import numpy as np
+def set_simulation_result():
+    folder_path = f'./SimulationResult/'
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    filename = folder_path + 'result.csv'
 
+    f = open(filename, 'w', encoding='utf-8', newline='')
+    wr = csv.writer(f)
+    title = []
+    title.append('S1_id')
+    title.append('S1_lat')
+    title.append('S1_lon')
+    title.append('S1_alt')
+    title.append('S2_id')
+    title.append('S2_lat')
+    title.append('S2_lon')
+    title.append('S2_alt')
+    title.append('link direction')
+    title.append('gap of angle (rad)')
+    wr.writerow(title)
+    f.close()
+def clear_simulation_result():
+    filename = f'./SimulationResult/result.csv'
+    with open(filename, 'w', encoding='utf-8', newline='') as file:
+        wr = csv.writer(file)
+        title = []
+        title.append('S1_id')
+        title.append('S1_lat')
+        title.append('S1_lon')
+        title.append('S1_alt')
+        title.append('S2_id')
+        title.append('S2_lat')
+        title.append('S2_lon')
+        title.append('S2_alt')
+        title.append('link direction')
+        title.append('gap of angle (rad)')
+        title.append('time')
+        wr.writerow(title)
+        file.close()
+def write_simulation_result(sat1, sat2, direction, gap, time):
+    link_d = ["left", "right"]
+    filename = f'./SimulationResult/result.csv'
+    f = open(filename, 'a', encoding='utf-8', newline='')
+    wr = csv.writer(f)
+    s1 = sat1.get_llh_info()
+    s2 = sat2.get_llh_info()
 
-# a: current laser direction vector, satA to SatB
-# b: current satA to satB vector
-def calc_gap_of_angle(ax, ay, az, bx, by, bz):
-    a = np.array([ax, ay, az])  # Replace Ax, Ay, Az with the coordinates of your first vector
-    b = np.array([bx, by, bz])  # Replace Bx, By, Bz with the coordinates of your second vector
+    row_data = [sat1.id, s1["lat"], s1["lon"], s1["alt"], sat2.id, s2["lat"], s2["lon"], s2["alt"], link_d[direction], gap, time]
+    wr.writerow(row_data)
+    f.close()
 
-    # Calculate the magnitudes (norms) of vectors A and B
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
+def write_gap_angle(sat1, sat2, direction, gap, time):
+    link_d = ["left", "right"]
+    filename = f'./SimulationResult/result.csv'
+    f = open(filename, 'a', encoding='utf-8', newline='')
+    wr = csv.writer(f)
+    s1 = sat1.get_llh_info()
+    s2 = sat2.get_llh_info()
 
-    # Calculate the cosine of the angle between A and B
-    cos_angle = np.dot(a, b) / (norm_a * norm_b)
+    row_data = [sat1.id, s1["lat"], s1["lon"], s1["alt"], sat2.id, s2["lat"], s2["lon"], s2["alt"], link_d[direction], gap, time]
+    wr.writerow(row_data)
+    f.close()
 
-    # Calculate the angle in radians
-    # angle_radians = np.arccos(cos_angle)
-    return cos_angle
-
-
-# def rotate_position(delta_lat, delta_lon, x, y, z):
-#
-#     # Longitude rotation (around the Z-axis)
-#     R_lon = np.array([
-#         [np.cos(delta_lon), -np.sin(delta_lon), 0],
-#         [np.sin(delta_lon), np.cos(delta_lon), 0],
-#         [0, 0, 1]
-#     ])
-#
-#     # Latitude rotation (around the X-axis)
-#     # Note the direction of the latitude change is negative here
-#     # R_lat = np.array([
-#     #     [1, 0, 0],
-#     #     [0, np.cos(-delta_lat), -np.sin(-delta_lat)],
-#     #     [0, np.sin(-delta_lat), np.cos(-delta_lat)]
-#     # ])
-#
-#     position = np.array([x, y, z])
-#     update_pos = R_lon.dot(position)
-#
-#     return update_pos[0], update_pos[1], update_pos[2]
 
 def update_ECEF(lat, lon, alt):
     new_x = math.cos(lat) * math.cos(lon) * alt

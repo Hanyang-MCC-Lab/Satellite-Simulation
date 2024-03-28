@@ -4,7 +4,7 @@ import numpy as np
 import vpython
 
 from laserISL import *
-from util import update_ECEF
+from util import *
 
 'Web VPython 3.2'
 from vpython import *
@@ -71,7 +71,6 @@ class Satellite:
     state = None
     # distance = None
     handover_timer = [0, 0]
-    laser_vec = [0, 0]
     link_sat = []
     failed_state = False
     detourTable = {}
@@ -81,9 +80,10 @@ class Satellite:
         self.failed_state = False
         self.link_state = [1, 1]
         self.handover_timer = [0, 0]
-        self.local_link_sat_ecef = []
-        self.local_link_sat_lla = []
+        self.before_angle_oab_array = []
         self.link_sat = []
+        self.laser_vec = []
+        self.laser_ecef = []
         self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
@@ -92,7 +92,7 @@ class Satellite:
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
-                                     math.cos(theta)) + 6.282185307) % 6.282185307 + orbit.lon_of_ascending
+                                     math.cos(theta))) % (2*np.pi) + orbit.lon_of_ascending
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
@@ -101,7 +101,7 @@ class Satellite:
         self.check_moving_state()
     def check_moving_state(self):
         # 상승/하강 상태
-        if self.sphere_attr.color != color.red:
+        if (0 not in self.link_state) and self.sphere_attr.color != color.red:
             if math.degrees(self.true_anomaly) >= 270 or math.degrees(self.true_anomaly) <= 90:
                 self.state = 'up'
                 self.sphere_attr.color = color.orange
@@ -110,24 +110,29 @@ class Satellite:
                 self.sphere_attr.color = color.cyan
 
     def check_link_state(self):
-        # link
         for i in range(len(self.link_sat)):
             if self.link_state[i] == 1:
                 element = self.link_sat[i]
-                virtual_ele = self.local_link_sat_ecef[i]
-                real_vector = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
-                laser_vector = np.array([virtual_ele[0] - self.x, virtual_ele[1] - self.y, virtual_ele[2] - self.z])
-                angle_gap = calc_gap_of_angle(real_vector, laser_vector)
+                before_angle_oab = self.before_angle_oab_array[i]
+                o_to_a = np.array([self.x, self.y, self.z])
+                a_to_b = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
+                new_angle_oab = calc_angle_between_vectors(o_to_a, a_to_b)
+                angle_gap = fabs(new_angle_oab-before_angle_oab)
                 # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
                 # if measure > LASER_DISTANCE_THRESHOLD:
-                if max(0, angle_gap-ANGULAR_VELOCITY) > LASER_ANGLE_THRESHOLD:
+                print(angle_gap)
+                if max(0, angle_gap-ANGULAR_VELOCITY_PER_SLOT) > LASER_ANGLE_THRESHOLD:
                     self.sphere_attr.color = color.red
                     self.change_link_state(i)
                     self.handover_timer[i] += HANDOVER_TIME
                     pat_sat_array.append(self)
-                    print("real:", real_vector, "laser:", laser_vector, "gap:", angle_gap)
+                    write_simulation_result(self, element, i, angle_gap, time)
+                    # print("real:", real_vector, "laser:", laser_vector, "gap:", angle_gap)
+                    # print("s1:", self.x, self.y, self.z)
+                    # print("s2_virtual:", virtual_ele[0], virtual_ele[1], virtual_ele[2])
+                    # print("s2_real:", element.x, element.y, element.z)
                 else:
-                    self.new_link(i)
+                    self.before_angle_oab_array[i] = new_angle_oab
 
 
     def change_link_state(self, index):
@@ -164,27 +169,18 @@ class Satellite:
         # 위도, 경도
         delta_latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly)) - self.latitude
         delta_longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly), math.cos(
-            self.true_anomaly)) + 6.2832) % 6.2832 + self.orbit.lon_of_ascending - self.longitude
+            self.true_anomaly))) % (2*np.pi) + self.orbit.lon_of_ascending - self.longitude
 
         self.latitude += delta_latitude
         self.longitude += delta_longitude
+        self.longitude = self.longitude % (2*np.pi)
 
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
 
-        # 가상 인접 위성
-        index = 0
-        for element in self.local_link_sat_lla:
-            # print(self.local_link_sat_lla[i])
-            lat, lon, alt = element[0], element[1], element[2]
-            x, y, z = update_ECEF(lat + delta_latitude, lon + delta_longitude, alt + CONST_EARTH_RADIUS)
-            self.local_link_sat_ecef[index] = [x, y, z]
-            index += 1
-
         # 구체 attribute 재설정
         self.sphere_attr.pos = vec(self.y, self.z, self.x)
         self.check_moving_state()
-        self.check_link_state()
         # self.distance.pos = self.sphere_attr.pos
 
     def get_great_distance(self, node_B):
@@ -569,15 +565,20 @@ def deploy(inc, axis, color):
 def deploy_starlink():
     inclination = math.radians(float(53))
     altitude = 550
-    orbitNum = 24
-    satNum = 66
+    orbitNum = 22
+    satNum = 72
     orbitRot = math.radians(360 / orbitNum)
     satRot = math.radians(360 / satNum)
     deploy(inclination, altitude, CONST_COLORS[0])
 
 
 # 클래스 끝, 메인 로직 시작
-
+orbitNum = 72
+satNum = 22
+maxDistance = 0
+CONST_EARTH_RADIUS = 6371  # 지구반경
+orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
+satRot = math.radians(360 / satNum)  # 위성회전각도
 # 궤도 및 위성 리스트 생성
 constellations = []
 pat_sat_array = []
@@ -646,6 +647,7 @@ fail_available = False
 # losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
 #                        math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
+set_simulation_result()
 while 1:
 
     while setting == False:
@@ -659,32 +661,36 @@ while 1:
         satRot = math.radians(360 / satNum)
         # maxDistance = MaxDist(m)
         deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
-        initialize_lisl(constellations[orbit_cnt])
         orbit_cnt = (orbit_cnt + 1) % 4
         setting = not setting
 
     while running == False:
         # print("Running")
+        # 공전
         for orbits in constellations:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.refresh(CONST_SAT_DT)
+
+        # 링크 확인
+        for orbits in constellations:
+            for orbit in orbits:
+                for sat in orbit.satellites:
+                    sat.check_link_state()
+
+        # 타이머 & 핸드오버
         for sat in pat_sat_array:
-            yet_cnt = 0
             for index in range(len(sat.handover_timer)):
                 if sat.handover_timer[index] > 0:
-                    yet_cnt += 1
                     sat.handover_timer[index] -= SLOT_DURATION
                     if sat.handover_timer[index] <= 0:
                         sat.handover_timer[index] = 0
                         sat.change_link_state(index)
                         sat.new_link(index)
-                        yet_cnt -= 1
-            if yet_cnt == 0:
-                sat.sphere_attr.color = color.orange if sat.state == 'up' else color.cyan
+            if 0 not in sat.link_state:
                 pat_sat_array.remove(sat)
         time += SLOT_DURATION
-        sleep(0.5)
+        # sleep(1)
         print("time:", time)
 
         # for i in range(len(simulator.network.log)):

@@ -1,14 +1,14 @@
 import numpy as np
 
 
-def calc_gap_of_angle(a, b):
+def calc_angle_between_vectors(a, b):
     # Calculate the magnitudes (norms) of vectors A and B
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
 
     # Calculate the cosine of the angle between A and B
     cos_angle = np.dot(a, b) / (norm_a * norm_b)
-    cos_angle = np.clip(cos_angle, -1, 1)
+    # cos_angle = np.clip(cos_angle, -1, 1)
 
     # Calculate the angle in radians
     angle_radians = np.arccos(cos_angle)
@@ -16,19 +16,18 @@ def calc_gap_of_angle(a, b):
 
 
 def PAT(sat1, sat2):
-    sat2_vec = [sat2.x, sat2.y, sat2.z]
-    sat1.local_link_sat_ecef.append(sat2_vec)
+    # o_to_a = np.array([sat1.x, sat1.y, sat1.z])
+    # a_to_b = np.array([sat2.x, sat2.y, sat2.z]) - o_to_a
+    sat1.laser_vec.append(np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z]))
     sat1.link_sat.append(sat2)
-    sat1.local_link_sat_lla.append([sat2.latitude, sat2.longitude, sat2.altitude])
+    # sat1.before_angle_oab_array.append(calc_angle_between_vectors(o_to_a, a_to_b))
 
 
 def re_PAT(sat1, sat2, direction):
-    sat2_vec = [sat2.x, sat2.y, sat2.z]
-    # print("local(ecef, lla):", sat1.local_link_sat_ecef[direction], sat1.local_link_sat_lla[direction], end=" ")
-    sat1.local_link_sat_ecef[direction] = sat2_vec
-    sat1.link_sat[direction] = sat2
-    sat1.local_link_sat_lla[direction] = [sat2.latitude, sat2.longitude, sat2.altitude]
-    # print("local(ecef, lla):", sat1.local_link_sat_ecef[direction], sat1.local_link_sat_lla[direction])
+    sat1.laser_vec[direction] = np.array([sat2.x - sat1.x, sat2.y - sat1.y, sat2.z - sat1.z])
+    # o_to_a = np.array([sat1.x, sat1.y, sat1.z])
+    # a_to_b = np.array([sat2.x, sat2.y, sat2.z]) - o_to_a
+    # sat1.before_angle_oab_array[direction] = calc_angle_between_vectors(o_to_a, a_to_b)
 
 
 def initialize_lisl(constellation):
@@ -37,7 +36,7 @@ def initialize_lisl(constellation):
     for i in range(orbit_num):
         for j in range(sat_num):
             cur_sat = constellation[i].satellites[j]
-            # # intra-orbit
+            # intra-orbit
             # if j == 0:
             #     PAT(cur_sat, constellation[i].satellites[j + 1])
             #     PAT(cur_sat, constellation[i].satellites[sat_num - 1])
