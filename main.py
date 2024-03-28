@@ -84,9 +84,10 @@ class Satellite:
 
         # laser inter satellite link
         self.link_sat = []
-        self.laser_vec = []
-        self.laser_azimuth = []
-        self.laser_elevation = []
+        # self.laser_vec = []
+        # self.laser_azimuth = []
+        # self.laser_elevation = []
+        self.before_inter_sat_vec_arr = []
 
         self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
@@ -117,9 +118,15 @@ class Satellite:
         for i in range(len(self.link_sat)):
             if self.link_state[i] == 1:
                 element = self.link_sat[i]
-                laser = self.laser_vec[i]
-                real_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
-                angle_gap = calc_angle_between_vectors(real_vec, laser)
+                current_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
+                before_vec = self.before_inter_sat_vec_arr[i]
+                angle_gap = calc_angle_between_vectors(current_vec, before_vec)
+                # 3try
+                # element = self.link_sat[i]
+                # laser = self.laser_vec[i]
+                # real_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
+                # angle_gap = calc_angle_between_vectors(real_vec, laser)
+                # 2try
                 # angle_gap = fabs(new_angle_oab-before_angle_oab)
                 # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
                 # if measure > LASER_DISTANCE_THRESHOLD:
@@ -128,6 +135,7 @@ class Satellite:
                     self.sphere_attr.color = color.red
                     self.change_link_state(i)
                     self.handover_timer[i] += HANDOVER_TIME
+                    print(self.handover_timer[i])
                     pat_sat_array.append(self)
                     write_simulation_result(self, element, i, angle_gap, time)
                     # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
@@ -181,14 +189,15 @@ class Satellite:
 
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
-        for i in range(len(self.link_sat)):
-            # print("before azi:", self.laser_azimuth[i], "before ele:", self.laser_elevation[i], "before vec:", self.laser_vec[i])
-            self.laser_elevation[i] += delta_latitude
-            self.laser_azimuth[i] += delta_longitude
-            self.laser_azimuth[i] = self.laser_azimuth[i] % (2*np.pi)
-            x, y, z = update_ECEF(self.laser_elevation[i], self.laser_azimuth[i], np.linalg.norm(self.laser_vec[i]))
-            self.laser_vec[i] = np.array([x, y, z])
-            # print("after azi:", self.laser_azimuth[i], "after ele:", self.laser_elevation[i], "after vec:", self.laser_vec[i])
+        # 3try
+        # for i in range(len(self.link_sat)):
+        #     # print("before azi:", self.laser_azimuth[i], "before ele:", self.laser_elevation[i], "before vec:", self.laser_vec[i])
+        #     self.laser_elevation[i] += delta_latitude
+        #     self.laser_azimuth[i] += delta_longitude
+        #     self.laser_azimuth[i] = self.laser_azimuth[i] % (2*np.pi)
+        #     x, y, z = update_ECEF(self.laser_elevation[i], self.laser_azimuth[i], np.linalg.norm(self.laser_vec[i]))
+        #     self.laser_vec[i] = np.array([x, y, z])
+        #     # print("after azi:", self.laser_azimuth[i], "after ele:", self.laser_elevation[i], "after vec:", self.laser_vec[i])
         # 구체 attribute 재설정
         self.sphere_attr.pos = vec(self.y, self.z, self.x)
         self.check_moving_state()
@@ -698,6 +707,7 @@ while 1:
                         sat.handover_timer[index] = 0
                         sat.change_link_state(index)
                         sat.new_link(index)
+                        print(sat.handover_timer)
             if 0 not in sat.link_state:
                 pat_sat_array.remove(sat)
         time += SLOT_DURATION

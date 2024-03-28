@@ -18,21 +18,31 @@ def calc_angle_between_vectors(a, b):
 
 
 def PAT(sat1, sat2):
+    sat1.before_inter_sat_vec_arr.append(np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z]))
+    sat1.link_sat.append(sat2)
+    ## 2try
+    # laser = np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z])
+    # sat1.laser_vec.append(laser)
+    # sat1.laser_azimuth.append(math.atan2(laser[1], laser[0]))
+    # sat1.laser_elevation.append(math.asin(laser[2]/np.linalg.norm(laser)))
+    # sat1.link_sat.append(sat2)
+
+    ## 3try
     # o_to_a = np.array([sat1.x, sat1.y, sat1.z])
     # a_to_b = np.array([sat2.x, sat2.y, sat2.z]) - o_to_a
-    laser = np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z])
-    sat1.laser_vec.append(laser)
-    sat1.laser_azimuth.append(math.atan2(laser[1], laser[0]))
-    sat1.laser_elevation.append(math.asin(laser[2]/np.linalg.norm(laser)))
-    sat1.link_sat.append(sat2)
     # sat1.before_angle_oab_array.append(calc_angle_between_vectors(o_to_a, a_to_b))
 
 
 def re_PAT(sat1, sat2, direction):
-    laser = np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z])
-    sat1.laser_vec[direction] = laser
-    sat1.laser_azimuth[direction] = math.atan2(laser[1], laser[0])
-    sat1.laser_elevation[direction] = math.asin(laser[2]/np.linalg.norm(laser))
+    sat1.before_inter_sat_vec_arr[direction] = np.array(np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z]))
+
+    # 2try
+    # laser = np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z])
+    # sat1.laser_vec[direction] = laser
+    # sat1.laser_azimuth[direction] = math.atan2(laser[1], laser[0])
+    # sat1.laser_elevation[direction] = math.asin(laser[2]/np.linalg.norm(laser))
+
+    # 3try
     # o_to_a = np.array([sat1.x, sat1.y, sat1.z])
     # a_to_b = np.array([sat2.x, sat2.y, sat2.z]) - o_to_a
     # sat1.before_angle_oab_array[direction] = calc_angle_between_vectors(o_to_a, a_to_b)
