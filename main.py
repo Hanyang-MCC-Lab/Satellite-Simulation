@@ -81,9 +81,13 @@ class Satellite:
         self.link_state = [1, 1]
         self.handover_timer = [0, 0]
         self.before_angle_oab_array = []
+
+        # laser inter satellite link
         self.link_sat = []
         self.laser_vec = []
-        self.laser_ecef = []
+        self.laser_azimuth = []
+        self.laser_elevation = []
+
         self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
@@ -113,26 +117,26 @@ class Satellite:
         for i in range(len(self.link_sat)):
             if self.link_state[i] == 1:
                 element = self.link_sat[i]
-                before_angle_oab = self.before_angle_oab_array[i]
-                o_to_a = np.array([self.x, self.y, self.z])
-                a_to_b = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
-                new_angle_oab = calc_angle_between_vectors(o_to_a, a_to_b)
-                angle_gap = fabs(new_angle_oab-before_angle_oab)
+                laser = self.laser_vec[i]
+                real_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
+                angle_gap = calc_angle_between_vectors(real_vec, laser)
+                # angle_gap = fabs(new_angle_oab-before_angle_oab)
                 # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
                 # if measure > LASER_DISTANCE_THRESHOLD:
-                print(angle_gap)
+                # print(angle_gap)
                 if max(0, angle_gap-ANGULAR_VELOCITY_PER_SLOT) > LASER_ANGLE_THRESHOLD:
                     self.sphere_attr.color = color.red
                     self.change_link_state(i)
                     self.handover_timer[i] += HANDOVER_TIME
                     pat_sat_array.append(self)
                     write_simulation_result(self, element, i, angle_gap, time)
-                    # print("real:", real_vector, "laser:", laser_vector, "gap:", angle_gap)
+                    # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
                     # print("s1:", self.x, self.y, self.z)
-                    # print("s2_virtual:", virtual_ele[0], virtual_ele[1], virtual_ele[2])
+                    # print("s2_virtual:", self.x+laser[0], self.y+laser[1], self.z+laser[2])
                     # print("s2_real:", element.x, element.y, element.z)
                 else:
-                    self.before_angle_oab_array[i] = new_angle_oab
+                    # self.before_angle_oab_array[i] = new_angle_oab
+                    self.new_link(i)
 
 
     def change_link_state(self, index):
@@ -177,7 +181,14 @@ class Satellite:
 
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
-
+        for i in range(len(self.link_sat)):
+            # print("before azi:", self.laser_azimuth[i], "before ele:", self.laser_elevation[i], "before vec:", self.laser_vec[i])
+            self.laser_elevation[i] += delta_latitude
+            self.laser_azimuth[i] += delta_longitude
+            self.laser_azimuth[i] = self.laser_azimuth[i] % (2*np.pi)
+            x, y, z = update_ECEF(self.laser_elevation[i], self.laser_azimuth[i], np.linalg.norm(self.laser_vec[i]))
+            self.laser_vec[i] = np.array([x, y, z])
+            # print("after azi:", self.laser_azimuth[i], "after ele:", self.laser_elevation[i], "after vec:", self.laser_vec[i])
         # 구체 attribute 재설정
         self.sphere_attr.pos = vec(self.y, self.z, self.x)
         self.check_moving_state()
