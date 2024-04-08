@@ -123,8 +123,8 @@ class Satellite:
 
     def check_link_state(self):
         for i in range(len(self.link_sat)):
-            # if (not self.had_pat[i]) and self.link_state[i] == 1:
-            if self.protect_timer[i] == 0 and self.link_state[i] == 1:
+            if (not self.had_pat[i]) and self.link_state[i] == 1:
+            # if self.protect_timer[i] == 0 and self.link_state[i] == 1:
                 element = self.link_sat[i]
                 current_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
                 before_vec = self.before_inter_sat_vec_arr[i]

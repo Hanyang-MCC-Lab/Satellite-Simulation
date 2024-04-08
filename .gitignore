@@ -229,5 +229,6 @@ http_cache.sqlite
 
 # 서권 실험실
 seogwon
+SimulationResult
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos
