@@ -227,22 +227,24 @@ class Satellite:
 
         return get_distance_with_lon_and_lat(lon_node_A, lat_node_A, lon_node_B, lat_node_B)
 
-    def transfer(self, destination, path):
-        path.append(self)
-        if destination.id == self.id:
-            return path
+
+class Packet:
+    src = None
+    dst = None
+    path = [] # 위성 객체
+    fail_info = [] # [[실패지점, 시도방향]...]
+
+    def __init__(self, src: Satellite, dst: Satellite):
+        self.src = src.id
+        self.dst = dst.id
+        self.path = []
+        self.fail_info = []
+
+    def transfer(self, current, destination):
+        self.path.append(current)
+        if destination.id == current.id:
+            return
         else:
-            cur_info = self.get_ecef_info()
-            # available_list = []
-            # available_list_ecef = []
-            # 통신 가능 위성 취합 => available list
-            # for orb in constellations[0]:
-            #     for hop in orb.satellites:
-            #         # and (hop.orbit or self.state == hop.state) 인클 디클 고려 조건
-            #         # if hop != self and max_dist_condition(cur_info, hop.get_ecef_info(), maxDistance):
-            #         if hop != self:
-            #             available_list.append(hop)
-            #             available_list_ecef.append(hop.get_ecef_info())
             # 최적 위성 탐색
             # next_hop = MDD(self, destination, available_list)
             # next_hop = MDA(self, destination, available_list)
@@ -252,22 +254,10 @@ class Satellite:
                 fail_count = 9999
             else:
                 fail_count = fail_idx_input(fi)
-            next_hop, fail_info = distributed_detour_routing(self, destination, orbitNum, satNum, constellations[0],
+            next_hop, fail_info = distributed_detour_routing(current, destination, orbitNum, satNum, constellations[0],
                                                              fail_count)
 
             return next_hop, fail_info
-
-
-class Packet:
-    src = None
-    dst = None
-    detourFlag = False
-
-    def __init__(self, src: Satellite, dst: Satellite, detour):
-        self.src = src.id
-        self.dst = dst.id
-        self.detourFlag = detour
-
 
 class Network:
     def __init__(self):
@@ -287,19 +277,22 @@ class Network:
         return distance / 3.0e8
 
     def routing(self, start: Satellite, dest: Satellite):
-        path, fail_info = start.transfer(dest, [])
+        packet = Packet(start, dest)
+        start.transfer(dest, packet)
         delay = 0
-        a = path[0]
-        for b in path[1:]:
+        a = packet.path[0]
+        for b in packet.path[1:]:
             delay += self.get_delay(a, b)
             a = b
-        self.fail_log[str(len(self.log))] = fail_info
-        self.log.append({
-            "index": len(self.log),
-            "packet": "[" + start.id + " -> " + dest.id + "]",
-            "delay": round(delay * 1000, 6),
-            "path": path,
-        })
+        #TODO: fail_info 차원수 추가에 따른 수정 -> show GUI까지
+
+        # self.fail_log[str(len(self.log))] = packet.fail_info
+        # self.log.append({
+        #     "index": len(self.log),
+        #     "packet": "[" + start.id + " -> " + dest.id + "]",
+        #     "delay": round(delay * 1000, 6),
+        #     "path": path,
+        # })
 
 
 class RoutingSimulator:
