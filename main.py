@@ -36,6 +36,7 @@ class Orbit:
         self.inclination = inclination
         self.lon_of_ascending = lon_of_ascending
         self.semi_major_axis = CONST_EARTH_RADIUS
+        self.phasing_radian = math.radians((PHASING_PARAMETER / orbitNum) * index)
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
         self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.3,
                                axis=vec(-1*math.sin(inclination)*math.cos(lon_of_ascending),
@@ -44,7 +45,7 @@ class Orbit:
                                color=color, thickness=15, radius=self.semi_major_axis + altitude, )
         # 위성 배치
         for idx in range(satNum):
-            sat = Satellite(self, idx, inclination, altitude, idx * satRot)
+            sat = Satellite(self, idx, inclination, altitude, idx * satRot + self.phasing_radian)
             self.satellites.append(sat)
 
     def get_orbit_info(self):
@@ -71,6 +72,8 @@ class Satellite:
     state = None
     # distance = None
     handover_timer = [0, 0]
+    had_pat = [False, False]
+    protect_timer = [0, 0]
     link_sat = []
     failed_state = False
     detourTable = {}
@@ -88,6 +91,9 @@ class Satellite:
         # self.laser_azimuth = []
         # self.laser_elevation = []
         self.before_inter_sat_vec_arr = []
+        # 재 PAT 방지
+        self.had_pat = [False, False]
+        self.protect_timer = [0, 0]
 
         self.detourTable = {}
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
@@ -104,9 +110,10 @@ class Satellite:
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100,100,100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
         self.check_moving_state()
+
     def check_moving_state(self):
         # 상승/하강 상태
-        if (0 not in self.link_state) and self.sphere_attr.color != color.red:
+        if 0 not in self.link_state:
             if math.degrees(self.true_anomaly) >= 270 or math.degrees(self.true_anomaly) <= 90:
                 self.state = 'up'
                 self.sphere_attr.color = color.orange
@@ -116,7 +123,8 @@ class Satellite:
 
     def check_link_state(self):
         for i in range(len(self.link_sat)):
-            if self.link_state[i] == 1:
+            # if (not self.had_pat[i]) and self.link_state[i] == 1:
+            if self.protect_timer[i] == 0 and self.link_state[i] == 1:
                 element = self.link_sat[i]
                 current_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
                 before_vec = self.before_inter_sat_vec_arr[i]
@@ -132,11 +140,16 @@ class Satellite:
                 # if measure > LASER_DISTANCE_THRESHOLD:
                 # print(angle_gap)
                 if max(0, angle_gap-ANGULAR_VELOCITY_PER_SLOT) > LASER_ANGLE_THRESHOLD:
-                    self.sphere_attr.color = color.red
+                    if self.sphere_attr.color == color.red:
+                        self.sphere_attr.color = color.black
+                    else:
+                        self.sphere_attr.color = color.red
                     self.change_link_state(i)
                     self.handover_timer[i] += HANDOVER_TIME
-                    print(self.handover_timer[i])
-                    pat_sat_array.append(self)
+                    self.had_pat[i] = True
+                    # print(self.handover_timer[i])
+                    if self not in pat_sat_array:
+                        pat_sat_array.append(self)
                     write_simulation_result(self, element, i, angle_gap, time)
                     # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
                     # print("s1:", self.x, self.y, self.z)
@@ -182,11 +195,14 @@ class Satellite:
         delta_latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly)) - self.latitude
         delta_longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly), math.cos(
             self.true_anomaly))) % (2*np.pi) + self.orbit.lon_of_ascending - self.longitude
-
+        is_passing_zero = self.latitude
         self.latitude += delta_latitude
         self.longitude += delta_longitude
         self.longitude = self.longitude % (2*np.pi)
-
+        is_passing_zero *= self.latitude
+        if is_passing_zero < 0:
+            print("pass 0 latitude", "delta_alt:", delta_latitude)
+            self.had_pat = [False, False]
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 3try
@@ -602,6 +618,7 @@ satRot = math.radians(360 / satNum)  # 위성회전각도
 # 궤도 및 위성 리스트 생성
 constellations = []
 pat_sat_array = []
+protect_sat_array = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
@@ -686,6 +703,38 @@ while 1:
 
     while running == False:
         # print("Running")
+
+        # 타이머 & 핸드오버
+        for sat in pat_sat_array:
+            for index in range(len(sat.handover_timer)):
+                if sat.handover_timer[index] > 0:
+                    sat.handover_timer[index] -= SLOT_DURATION
+                    if sat.handover_timer[index] <= 0:
+                        sat.handover_timer[index] = 0
+                        sat.change_link_state(index)
+                        sat.new_link(index)
+                        # sat.protect_timer[index] += PROTECT_TIME
+                        # if sat not in protect_sat_array:
+                        #     protect_sat_array.append(sat)
+                        # print(sat.handover_timer)
+            if 0 not in sat.link_state:
+                pat_sat_array.remove(sat)
+
+        # for sat in protect_sat_array:
+        #     for index in range(len(sat.protect_timer)):
+        #         if sat.protect_timer[index] > 0:
+        #             # print("before:", sat.protect_timer)
+        #             sat.protect_timer[index] -= SLOT_DURATION
+        #             # print("after:", sat.protect_timer)
+        #             if sat.protect_timer[index] <= 0:
+        #                 sat.protect_timer[index] = 0
+        #     if sum(sat.protect_timer) == 0:
+        #         protect_sat_array.remove(sat)
+
+        time += SLOT_DURATION
+        # sleep(0.2)
+        print("time:", time)
+
         # 공전
         for orbits in constellations:
             for orbit in orbits:
@@ -698,21 +747,6 @@ while 1:
                 for sat in orbit.satellites:
                     sat.check_link_state()
 
-        # 타이머 & 핸드오버
-        for sat in pat_sat_array:
-            for index in range(len(sat.handover_timer)):
-                if sat.handover_timer[index] > 0:
-                    sat.handover_timer[index] -= SLOT_DURATION
-                    if sat.handover_timer[index] <= 0:
-                        sat.handover_timer[index] = 0
-                        sat.change_link_state(index)
-                        sat.new_link(index)
-                        print(sat.handover_timer)
-            if 0 not in sat.link_state:
-                pat_sat_array.remove(sat)
-        time += SLOT_DURATION
-        # sleep(1)
-        print("time:", time)
 
         # for i in range(len(simulator.network.log)):
         #     path = simulator.network.log[i]["path"]
