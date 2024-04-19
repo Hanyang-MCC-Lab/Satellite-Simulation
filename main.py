@@ -39,9 +39,9 @@ class Orbit:
         self.phasing_radian = math.radians((PHASING_PARAMETER / orbitNum) * index)
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
         self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.3,
-                               axis=vec(-1*math.sin(inclination)*math.cos(lon_of_ascending),
+                               axis=vec(-1 * math.sin(inclination) * math.cos(lon_of_ascending),
                                         math.cos(inclination),
-                                        math.sin(lon_of_ascending)*math.sin(inclination)),
+                                        math.sin(lon_of_ascending) * math.sin(inclination)),
                                color=color, thickness=15, radius=self.semi_major_axis + altitude, )
         # 위성 배치
         for idx in range(satNum):
@@ -84,7 +84,7 @@ class Satellite:
         self.link_state = [1, 1]
         self.handover_timer = [0, 0]
         self.before_angle_oab_array = []
-
+        self.fail_experiences = {0: [], 1: []}
         # laser inter satellite link
         self.link_sat = []
         # self.laser_vec = []
@@ -96,6 +96,7 @@ class Satellite:
         self.protect_timer = [0, 0]
 
         self.detourTable = {}
+        self.should_notice_recovery = False
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
@@ -103,11 +104,11 @@ class Satellite:
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
-                                     math.cos(theta))) % (2*np.pi) + orbit.lon_of_ascending
+                                     math.cos(theta))) % (2 * np.pi) + orbit.lon_of_ascending
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
-        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100,100,100))
+        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100, 100, 100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
         self.check_moving_state()
 
@@ -115,6 +116,8 @@ class Satellite:
         # 상승/하강 상태
         if 0 not in self.link_state:
             if math.degrees(self.true_anomaly) >= 270 or math.degrees(self.true_anomaly) <= 90:
+                # if self.state == 'down':
+                #     self.had_pat = [False, False]
                 self.state = 'up'
                 self.sphere_attr.color = color.orange
             else:
@@ -122,43 +125,47 @@ class Satellite:
                 self.sphere_attr.color = color.cyan
 
     def check_link_state(self):
-        for i in range(len(self.link_sat)):
-            if (not self.had_pat[i]) and self.link_state[i] == 1:
-            # if self.protect_timer[i] == 0 and self.link_state[i] == 1:
-                element = self.link_sat[i]
-                current_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
-                before_vec = self.before_inter_sat_vec_arr[i]
-                angle_gap = calc_angle_between_vectors(current_vec, before_vec)
-                # 3try
-                # element = self.link_sat[i]
-                # laser = self.laser_vec[i]
-                # real_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
-                # angle_gap = calc_angle_between_vectors(real_vec, laser)
-                # 2try
-                # angle_gap = fabs(new_angle_oab-before_angle_oab)
-                # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
-                # if measure > LASER_DISTANCE_THRESHOLD:
-                # print(angle_gap)
-                if max(0, angle_gap-ANGULAR_VELOCITY_PER_SLOT) > LASER_ANGLE_THRESHOLD:
-                    if self.sphere_attr.color == color.red:
-                        self.sphere_attr.color = color.black
+        global pat_available
+        if pat_available:
+            for i in range(len(self.link_sat)):
+                if (not self.had_pat[i]) and self.link_state[i] == 1:
+                    # if self.protect_timer[i] == 0 and self.link_state[i] == 1:
+                    element = self.link_sat[i]
+                    current_vec = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
+                    before_vec = self.before_inter_sat_vec_arr[i]
+                    angle_gap = calc_angle_between_vectors(current_vec, before_vec)
+                    # 3try
+                    # element = self.link_sat[i]
+                    # laser = self.laser_vec[i]
+                    # real_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
+                    # angle_gap = calc_angle_between_vectors(real_vec, laser)
+                    # 2try
+                    # angle_gap = fabs(new_angle_oab-before_angle_oab)
+                    # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
+                    # if measure > LASER_DISTANCE_THRESHOLD:
+                    # print(angle_gap)
+                    if max(0, angle_gap - ANGULAR_VELOCITY_PER_SLOT) > LASER_ANGLE_THRESHOLD:
+                        if self.sphere_attr.color == color.red:
+                            self.sphere_attr.color = color.black
+                        else:
+                            self.sphere_attr.color = color.red
+                        self.change_link_state(i)
+                        self.handover_timer[i] += HANDOVER_TIME
+                        self.had_pat[i] = True
+                        # print(self.handover_timer[i])
+                        if self not in pat_sat_array:
+                            pat_sat_array.append(self)
+                        write_simulation_result(self, element, i, angle_gap, time)
+                        # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
+                        # print("s1:", self.x, self.y, self.z)
+                        # print("s2_virtual:", self.x+laser[0], self.y+laser[1], self.z+laser[2])
+                        # print("s2_real:", element.x, element.y, element.z)
                     else:
-                        self.sphere_attr.color = color.red
-                    self.change_link_state(i)
-                    self.handover_timer[i] += HANDOVER_TIME
-                    self.had_pat[i] = True
-                    # print(self.handover_timer[i])
-                    if self not in pat_sat_array:
-                        pat_sat_array.append(self)
-                    write_simulation_result(self, element, i, angle_gap, time)
-                    # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
-                    # print("s1:", self.x, self.y, self.z)
-                    # print("s2_virtual:", self.x+laser[0], self.y+laser[1], self.z+laser[2])
-                    # print("s2_real:", element.x, element.y, element.z)
-                else:
-                    # self.before_angle_oab_array[i] = new_angle_oab
-                    self.new_link(i)
-
+                        # self.before_angle_oab_array[i] = new_angle_oab
+                        self.new_link(i)
+        else:
+            for i in range(len(self.link_sat)):
+                self.new_link(i)
 
     def change_link_state(self, index):
         if self.link_state[index]:
@@ -194,11 +201,11 @@ class Satellite:
         # 위도, 경도
         delta_latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly)) - self.latitude
         delta_longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly), math.cos(
-            self.true_anomaly))) % (2*np.pi) + self.orbit.lon_of_ascending - self.longitude
+            self.true_anomaly))) % (2 * np.pi) + self.orbit.lon_of_ascending - self.longitude
         is_passing_zero = self.latitude
         self.latitude += delta_latitude
         self.longitude += delta_longitude
-        self.longitude = self.longitude % (2*np.pi)
+        self.longitude = self.longitude % (2 * np.pi)
         is_passing_zero *= self.latitude
         if is_passing_zero < 0:
             print("pass 0 latitude", "delta_alt:", delta_latitude)
@@ -229,35 +236,30 @@ class Satellite:
 
 
 class Packet:
-    src = None
-    dst = None
-    path = [] # 위성 객체
-    fail_info = [] # [[실패지점, 시도방향]...]
+    packet_count = 0
 
     def __init__(self, src: Satellite, dst: Satellite):
-        self.src = src.id
-        self.dst = dst.id
+        self.index = Packet.packet_count
+        Packet.packet_count += 1
+        self.src = src
+        self.dst = dst
+        self.name = "[" + self.src.id + "->" + self.dst.id + "]"
         self.path = []
+        self.delay = 0
         self.fail_info = []
 
-    def transfer(self, current, destination):
-        self.path.append(current)
-        if destination.id == current.id:
-            return
-        else:
-            # 최적 위성 탐색
-            # next_hop = MDD(self, destination, available_list)
-            # next_hop = MDA(self, destination, available_list)
-            # next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
-            global fail_available
-            if not fail_available:
-                fail_count = 9999
-            else:
-                fail_count = fail_idx_input(fi)
-            next_hop, fail_info = distributed_detour_routing(current, destination, orbitNum, satNum, constellations[0],
-                                                             fail_count)
+    def transfer(self):
+        # 최적 위성 탐색
+        minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,
+                                                                                        satNum, constellations[0])
+        # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
+        self.path, self.fail_info = distributed_detour_routing(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit,
+                                                               self.src, self.dst)
 
-            return next_hop, fail_info
+        # next_hop = MDD(self, destination, available_list)
+        # next_hop = MDA(self, destination, available_list)
+        # next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
+
 
 class Network:
     def __init__(self):
@@ -278,13 +280,15 @@ class Network:
 
     def routing(self, start: Satellite, dest: Satellite):
         packet = Packet(start, dest)
-        start.transfer(dest, packet)
-        delay = 0
+        packet.transfer()
         a = packet.path[0]
         for b in packet.path[1:]:
-            delay += self.get_delay(a, b)
+            packet.delay += self.get_delay(a, b)
             a = b
-        #TODO: fail_info 차원수 추가에 따른 수정 -> show GUI까지
+        # if len(packet.fail_info) > 0:
+        self.fail_log[str(len(self.log))] = packet.fail_info
+        self.log.append(packet)
+        # TODO: fail_info 차원수 추가에 따른 수정 -> show GUI까지
 
         # self.fail_log[str(len(self.log))] = packet.fail_info
         # self.log.append({
@@ -300,6 +304,7 @@ class RoutingSimulator:
     worker = []
     randomSatList = []
     parallelProcess = []
+    fail_objects = {}
 
     def __init__(self):
         self.network = Network()
@@ -370,15 +375,15 @@ class RoutingSimulator:
         fail_line = None
 
         for i in range(len(self.network.log)):
-            for j in self.network.log[i]["path"]:
+            for j in self.network.log[i].path:
                 j.sphere_attr.color = color.white
                 j.sphere_attr.radius = 60
                 # j.distance.visible = False
 
-        for i in self.network.log[index]["path"]:
-            if self.network.log[index]["path"].index(i) == 0:
+        for i in self.network.log[index].path:
+            if self.network.log[index].path.index(i) == 0:
                 i.sphere_attr.color = color.orange
-            elif self.network.log[index]["path"].index(i) == len(self.network.log[index]["path"]) - 1:
+            elif self.network.log[index].path.index(i) == len(self.network.log[index].path) - 1:
                 i.sphere_attr.color = color.purple
             # elif i.failed_state == True:
             #     i.sphere_attr.color = color.red
@@ -387,7 +392,7 @@ class RoutingSimulator:
             i.sphere_attr.radius = 120
 
         # vec list appending
-        for i in self.network.log[index]["path"]:
+        for i in self.network.log[index].path:
             vector_list.append(vec(i.get_ecef_info()[1], i.get_ecef_info()[2], i.get_ecef_info()[0]))
 
         # packet line appending / lining
@@ -401,17 +406,27 @@ class RoutingSimulator:
         # failure pointing & lining
         print(str(index), self.network.fail_log)
         if len(self.network.fail_log[str(index)]):
-            fail_sat1 = self.network.fail_log[str(index)][0]
-            fail_sat2 = self.network.fail_log[str(index)][1]
-            fail_sat1_info = vec(fail_sat1.get_ecef_info()[1], fail_sat1.get_ecef_info()[2],
-                                 fail_sat1.get_ecef_info()[0])
-            fail_sat2_info = vec(fail_sat2.get_ecef_info()[1], fail_sat2.get_ecef_info()[2],
-                                 fail_sat2.get_ecef_info()[0])
-            fail_point = sphere(pos=fail_sat1_info, radius=150, color=color.red, opacity=1)
-            fail_line = arrow(pos=fail_sat1_info, axis=fail_sat2_info - fail_sat1_info, shaftwidth=50, headwidth=0,
-                              headlength=0,
-                              length=mag(fail_sat2_info - fail_sat1_info),
-                              color=color.red, opacity=1)
+            if str(index) in RoutingSimulator.fail_objects:
+                for fail_obj in RoutingSimulator.fail_objects[str(index)]:
+                    fail_obj.opacity = 1
+            else:
+                fail_arr = []
+                for fail_pair in self.network.fail_log[str(index)]:
+                    fail_sat1 = fail_pair[0]
+                    fail_sat2 = fail_pair[1]
+                    fail_sat1_info = vec(fail_sat1.get_ecef_info()[1], fail_sat1.get_ecef_info()[2],
+                                         fail_sat1.get_ecef_info()[0])
+                    fail_sat2_info = vec(fail_sat2.get_ecef_info()[1], fail_sat2.get_ecef_info()[2],
+                                         fail_sat2.get_ecef_info()[0])
+                    fail_point = sphere(pos=fail_sat1_info, radius=150, color=color.red, opacity=1)
+                    fail_line = arrow(pos=fail_sat1_info, axis=fail_sat2_info - fail_sat1_info, shaftwidth=50,
+                                      headwidth=0,
+                                      headlength=0,
+                                      length=mag(fail_sat2_info - fail_sat1_info),
+                                      color=color.red, opacity=1)
+                    fail_arr.append(fail_point)
+                    fail_arr.append(fail_line)
+                RoutingSimulator.fail_objects[str(index)] = fail_arr
 
         # moving dot moving
         moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green, opacity=1)
@@ -430,27 +445,28 @@ class RoutingSimulator:
         # moving dot hiding
         moving_dot.opacity = 0
 
-        if str(index) in self.network.fail_log:
-            # fail dot hiding
-            fail_point.opacity = 0
-            # fail dot hiding
-            fail_line.opacity = 0
+        if len(self.network.fail_log[str(index)]):
+            for fail_obj in RoutingSimulator.fail_objects[str(index)]:
+                fail_obj.opacity = 0
 
     def reset_GUI(self):
         for i in range(len(self.network.log)):
-            for j in self.network.log[i]["path"]:
-                j.sphere_attr.color = color.white
-                j.sphere_attr.radius = 60
+            for j in self.network.log[i].path:
+                j.sphere_attr.color = color.orange if j.state == 'up' else color.cyan
+                j.sphere_attr.radius = 40
+            if str(i) in RoutingSimulator.fail_objects:
+                for fail_obj in RoutingSimulator.fail_objects[str(i)]:
+                    fail_obj.opacity = 1
 
     def print_log(self):
         print("============log details============")
         print("packt_ID       delay(ms)         path")
         packet_idx = 0
         for i in self.network.log:
-            print(packet_idx, "            ", i["delay"], "        ", end="[")
-            for j in i["path"][:-1]:
+            print(packet_idx, "            ", i.delay, "        ", end="[")
+            for j in i.path[:-1]:
                 print(j.id, end="->")
-            print(i["path"][-1].id + "]")
+            print(i.path[-1].id + "]")
             packet_idx += 1
 
 
@@ -468,18 +484,12 @@ def get_perpendicular_vector(point_coordinates):
     return perpendicular_vector
 
 
-def func_visible(r):
-    global fail_available
+def enable_PAT(r):
+    global pat_available
     if r.checked:
-        fail_available = True
-        fi.disabled = False
+        pat_available = True
     else:
-        fail_available = False
-        fi.disabled = True
-
-
-def fail_idx_input(fi):
-    return fi.number
+        pat_available = False
 
 
 def Inc(i):
@@ -527,7 +537,7 @@ def Route(t):
     t.text = "Route"
     log_list = ["None"]
     for i in simulator.network.log:
-        log_list.append(str(i["index"]) + ". " + i["packet"] + " (delay: " + str(i["delay"]) + ")")
+        log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
     routing_list_menu.choices = log_list
 
 
@@ -656,13 +666,11 @@ d = winput(bind=Dst, width=120, type="string")
 # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
 button(text="Route", bind=Route)
 # button(text="Seoul -> LA (veta)", bind=seoul_to_la)
-# button(text="Reset detour tables", bind=reset_detour_table)
+button(text="Reset detour tables", bind=reset_detour_table)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
-scene.append_to_caption("\n\n failure index")
-checkbox(bind=func_visible, checked=False)  # text to right of checkbox
-fi = winput(bind="fail_idx_input", width=50, type="numeric")
-fi.disabled = True
+scene.append_to_caption("\n\n enable PAT")
+checkbox(bind=enable_PAT, checked=True)  # text to right of checkbox
 
 # 메인
 time = 0
@@ -670,7 +678,7 @@ orbit_cnt = 0
 simulator = RoutingSimulator()
 menu_choice = 0
 veta_results = []
-fail_available = False
+pat_available = True
 # seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
 #                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
@@ -706,6 +714,9 @@ while 1:
                         sat.handover_timer[index] = 0
                         sat.change_link_state(index)
                         sat.new_link(index)
+                        for fail_experience in sat.fail_experiences[index]:
+                            recovery_flood(fail_experience)
+
                         # sat.protect_timer[index] += PROTECT_TIME
                         # if sat not in protect_sat_array:
                         #     protect_sat_array.append(sat)
@@ -726,7 +737,8 @@ while 1:
 
         time += SLOT_DURATION
         # sleep(0.2)
-        print("time:", time)
+        if time % 5000 == 0:
+            print("time:", time // 1000, "seconds")
 
         # 공전
         for orbits in constellations:
@@ -739,7 +751,6 @@ while 1:
             for orbit in orbits:
                 for sat in orbit.satellites:
                     sat.check_link_state()
-
 
         # for i in range(len(simulator.network.log)):
         #     path = simulator.network.log[i]["path"]

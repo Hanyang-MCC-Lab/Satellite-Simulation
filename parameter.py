@@ -3,7 +3,7 @@ import math
 
 from vpython import vpython
 
-LASER_ANGLE_THRESHOLD = 0.0000025 # 2.5 마이크로라디안
+LASER_ANGLE_THRESHOLD = 0.000025 # 25 마이크로라디안
 LASER_DISTANCE_THRESHOLD = 1
 # ANGULAR_VELOCITY = 0.00057595865 + 0.001093099711 # 0.033도
 ANGULAR_VELOCITY = 0.001093099711 # 0.06263도
@@ -23,4 +23,4 @@ CONST_SAT_DT = real_rot_speed_per_second * (SLOT_DURATION/1000)  # 위성 공전
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
-PHASING_PARAMETER = 17
+PHASING_PARAMETER = 0 # 17
