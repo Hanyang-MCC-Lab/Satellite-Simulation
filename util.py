@@ -25,7 +25,7 @@ def set_simulation_result():
     wr.writerow(title)
     f.close()
 def clear_simulation_result():
-    filename = f'./SimulationResult/result.csv'
+    filename = f'./SimulationResult/pat_result.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
         title = []
@@ -44,7 +44,7 @@ def clear_simulation_result():
         file.close()
 def write_simulation_result(sat1, sat2, direction, gap, time):
     link_d = ["left", "right"]
-    filename = f'./SimulationResult/result.csv'
+    filename = f'./SimulationResult/pat_result.csv'
     f = open(filename, 'a', encoding='utf-8', newline='')
     wr = csv.writer(f)
     s1 = sat1.get_llh_info()
@@ -56,7 +56,7 @@ def write_simulation_result(sat1, sat2, direction, gap, time):
 
 def write_gap_angle(sat1, sat2, direction, gap, time):
     link_d = ["left", "right"]
-    filename = f'./SimulationResult/result.csv'
+    filename = f'./SimulationResult/pat_result.csv'
     f = open(filename, 'a', encoding='utf-8', newline='')
     wr = csv.writer(f)
     s1 = sat1.get_llh_info()
@@ -66,7 +66,22 @@ def write_gap_angle(sat1, sat2, direction, gap, time):
     wr.writerow(row_data)
     f.close()
 
-
+def write_routing_simulation_result(data):
+    filename = f'./SimulationResult/result.csv'
+    with open(filename, 'w', encoding='utf-8', newline='') as file:
+        wr = csv.writer(file)
+        title = []
+        title.append('index')
+        title.append('source')
+        title.append('destination')
+        title.append('hops')
+        title.append('fail count')
+        title.append('delay')
+        wr.writerow(title)
+        for log in data:
+            row_data = [log.index, log.src, log.dst, len(log.path), len(log.fail_info), log.delay]
+            wr.writerow(row_data)
+        file.close()
 def update_ECEF(lat, lon, alt):
     new_x = math.cos(lat) * math.cos(lon) * alt
     new_y = math.cos(lat) * math.sin(lon) * alt

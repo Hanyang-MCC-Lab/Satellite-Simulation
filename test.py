@@ -1,67 +1,74 @@
 import heapq
 import math
 
-def euclidean_distance(p1, p2):
-    return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
 
-def dijkstra(nodes, edges, start):
-    # 거리와 경로를 저장할 자료구조
-    distances = {node: float('inf') for node in nodes}
-    previous_nodes = {node: None for node in nodes}
-    distances[start] = 0
-    pq = [(0, start)]
+def get_euc_distance(node_A, node_B):
+    node_A_ecef = node_A.get_ecef_info()
+    node_B_ecef = node_B.get_ecef_info()
+    return math.dist(node_A_ecef, node_B_ecef)
 
-    while pq:
-        current_distance, current_node = heapq.heappop(pq)
 
-        # 더 짧은 경로가 있다면 스킵
-        if current_distance > distances[current_node]:
+def get_grid(mhr):
+    grid = []
+    satnum = len(mhr)
+    orbnum = len(mhr[0])
+    for s in range(len(mhr)):
+        grid_row = []
+        for o in range(len(mhr[0])):
+            sat_distance = []
+            if s != 0:
+                sat_distance.append({'up': grid[s - 1][o]['down']})
+            if s != satnum:
+                sat_distance.append({'down': get_euc_distance(mhr[s][o], mhr[s + 1][o])})
+            if o != 0:
+                sat_distance.append({'left': grid_row[o - 1]['right']})
+            if o != orbnum:
+                sat_distance.append({'right': get_euc_distance(mhr[s][o], mhr[s][o + 1])})
+            grid_row.append(sat_distance)
+        grid.append(grid_row)
+    return grid
+
+
+def dijkstra(grid, start, target):
+    rows, cols = len(grid), len(grid[0])
+    directions = {
+        'right': (0, 1),
+        'left': (0, -1),
+        'down': (1, 0),
+        'up': (-1, 0)
+    }
+    min_heap = [(0, start)]
+    visited = set()
+    distances = [[float('inf')] * cols for _ in range(rows)]
+    parents = {start: None}
+    sx, sy = start
+    distances[sx][sy] = 0
+
+    while min_heap:
+        dist, (x, y) = heapq.heappop(min_heap)
+        if (x, y) in visited:
             continue
+        if (x, y) == target:
+            return dist, reconstruct_path(parents, target)
+        visited.add((x, y))
 
-        # 인접 노드 탐색
-        for neighbor, weight in edges[current_node]:
-            distance = current_distance + weight
+        for direction, (dx, dy) in directions.items():
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < rows and 0 <= ny < cols and direction in grid[x][y]:
+                new_dist = dist + grid[x][y][direction]
+                if new_dist < distances[nx][ny]:
+                    distances[nx][ny] = new_dist
+                    parents[(nx, ny)] = (x, y)
+                    heapq.heappush(min_heap, (new_dist, (nx, ny)))
 
-            # 더 짧은 경로 발견 시 업데이트
-            if distance < distances[neighbor]:
-                distances[neighbor] = distance
-                previous_nodes[neighbor] = current_node
-                heapq.heappush(pq, (distance, neighbor))
+    return float('inf'), []
 
-    return distances, previous_nodes
 
-def construct_path(previous_nodes, end):
+def reconstruct_path(parents, target):
     path = []
-    step = end
-    while previous_nodes[step] is not None:
+    step = target
+    while step is not None:
         path.append(step)
-        step = previous_nodes[step]
-    path.append(step)
-    return path[::-1]
-
-# 예제 위성 좌표
-nodes = {
-    'A': (0, 0, 0),
-    'B': (1, 1, 1),
-    'C': (2, 2, 2),
-    'D': (1, 2, 2),
-    'E': (2, 0, 1)
-}
-
-# 간선과 가중치(거리) 계산
-edges = {
-    node: [(other, euclidean_distance(pos, nodes[other]))
-           for other in nodes if other != node]
-    for node, pos in nodes.items()
-}
-
-# 시작점
-start = 'A'
-# 종점
-end = 'D'
-
-distances, previous_nodes = dijkstra(nodes, edges, start)
-path = construct_path(previous_nodes, end)
-
-print("Shortest Path:", path)
-print("Total Distance:", distances[end])
+        step = parents[step]
+    path.reverse()
+    return path

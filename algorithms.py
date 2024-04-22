@@ -59,7 +59,7 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
             orbit_range = list(range(src_info["orbit"]-1, src_info["orbit"]+1))
     if len(sat_range) == 1:
         lat = latitude_convert(constellation[orbit_range[0]].satellites[sat_range[0]].get_llh_info()["lat"])
-        print("All of latitude of them is", lat)
+        # print("All of latitude of them is", lat)
         if math.fabs(lat) >= 70:
             if math.fabs(lat) > 90:
                 while math.fabs(latitude_convert(constellation[orbit_range[0]].satellites[sat_range[-1]].get_llh_info()["lat"])) >= 70:
@@ -72,10 +72,10 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
                         sat_range += [max_sat_num - 1]
 
     mhr = []
-    print(orbit_range)
-    print(sat_range)
-    print("src: ", src_orbit, src_sat)
-    print("dst: ", dest_orbit, dest_sat)
+    # print(orbit_range)
+    # print(sat_range)
+    # print("src: ", src_orbit, src_sat)
+    # print("dst: ", dest_orbit, dest_sat)
     for i in sat_range:
         temp = []
         for j in orbit_range:
@@ -104,11 +104,11 @@ def distributed_detour_routing(mhr, src_sat, src_orbit, dest_sat, dest_orbit, sr
     path = []
     fail_info = []
     count = 0
-    print("===MHR===")
-    for i in mhr:
-        for j in i:
-            print(j.id, end=" ")
-        print()
+    # print("===MHR===")
+    # for i in mhr:
+    #     for j in i:
+    #         print(j.id, end=" ")
+    #     print()
     dest_info = dest.get_llh_info()
     cur_sat, cur_orbit = src_sat, src_orbit
     while cur_sat != dest_sat or cur_orbit != dest_orbit: # 경로의 마지막이 destination일 때까지
@@ -117,13 +117,13 @@ def distributed_detour_routing(mhr, src_sat, src_orbit, dest_sat, dest_orbit, sr
         cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
         cur_id = mhr[cur_sat][cur_orbit].id
         # sleep(1)
-        print("=====", mhr[cur_sat][cur_orbit].id, "=====")
-        print("current:", cur_sat, cur_orbit)
+        # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+        # print("current:", cur_sat, cur_orbit)
         cur_lat, dest_lat = latitude_convert(cur_info["lat"]), latitude_convert(dest_info["lat"])
-        print("Detour table:", mhr[cur_sat][cur_orbit].detourTable)
+        # print("Detour table:", mhr[cur_sat][cur_orbit].detourTable)
         if dest.id in mhr[cur_sat][cur_orbit].detourTable:
             # detour table에 의한 라우팅
-            print(cur_id, "has a direction in its detour table!")
+            # print(cur_id, "has a direction in its detour table!")
             direction = mhr[cur_sat][cur_orbit].detourTable[dest.id]
             # 링크 상태를 고려함
             if direction == "right":
@@ -143,7 +143,7 @@ def distributed_detour_routing(mhr, src_sat, src_orbit, dest_sat, dest_orbit, sr
         else:
             # 일반 라우팅
             # step1. 방향결정
-            if (cur_sat == vertical_line and cur_orbit != dest_orbit) or (cur_sat == dest_sat and math.fabs(cur_lat) <= 70):
+            if (cur_sat == vertical_line and cur_orbit != dest_orbit) or (cur_sat == dest_sat):
                 if cur_orbit > dest_orbit:
                     direction = "left"
                     success = True if mhr[cur_sat][cur_orbit-1].link_state[0] == 1 else False
@@ -167,7 +167,7 @@ def distributed_detour_routing(mhr, src_sat, src_orbit, dest_sat, dest_orbit, sr
             else: # direction == "right"
                 cur_orbit += 1
         else: # 실패
-            print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
+            # print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
             fail_pair = [mhr[cur_sat][cur_orbit]]
             if direction == "up":
                 fail_pair.append(mhr[cur_sat-1][cur_orbit])
@@ -190,7 +190,7 @@ def distributed_detour_routing(mhr, src_sat, src_orbit, dest_sat, dest_orbit, sr
                     cur_sat += 1
                 else:
                     cur_sat -= 1
-            print("move instantly to", mhr[cur_sat][cur_orbit].id)
+            # print("move instantly to", mhr[cur_sat][cur_orbit].id)
 
         count += 1
 
@@ -227,7 +227,7 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
                 mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "left"
 
     elif fail_sat == src_sat and fail_orbit != src_orbit: #fail_sat mhr이 src_sat mhr과 맡닿을경우
-        print("is in src sat line")
+        # print("is in src sat line")
         if failed_direction == "up": #코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
             if fail_orbit > src_orbit:
                 mhr[fail_sat][fail_orbit-1].detourTable[destination.id] = "up"
@@ -245,22 +245,24 @@ def selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, fail_sat, fai
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "up"
 
     elif fail_orbit == src_orbit and fail_sat != dest_sat: #fail_sat mhr이 src_sat mhr과 맡닿을경우
-        print("is in src orbit line")
+        # print("is in src orbit line")
         if failed_direction in ["up", "down"]:
             if fail_orbit < dest_orbit:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "right"
             elif fail_orbit > dest_orbit:
                 mhr[fail_sat][fail_orbit].detourTable[destination.id] = "left"
         elif failed_direction == "right":  # 코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
-            print(fail_sat, src_sat)
+            # print(fail_sat, src_sat)
             if fail_sat > src_sat:
                 mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "right"
             else:
+                print(fail_sat, fail_orbit, src_sat, src_orbit, dest_sat, dest_orbit)
                 mhr[fail_sat+1][fail_orbit].detourTable[destination.id] = "right"
         elif failed_direction == "left":
             if fail_sat > src_sat:
                 mhr[fail_sat-1][fail_orbit].detourTable[destination.id] = "left"
             else:
+                print(fail_sat, fail_orbit, src_sat, src_orbit, dest_sat, dest_orbit)
                 mhr[fail_sat+1][fail_orbit].detourTable[destination.id] = "left"
 
     else: #fail_sat이 dest_sat과 linear하여 selective flood가 필요할 때
@@ -297,92 +299,120 @@ def recovery_flood(data):
     if fail_sat == src_sat and fail_orbit == dest_orbit: #코너 경우1
         if failed_direction == "up":
             if fail_orbit < src_orbit:
-                del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit+1].detourTable:
+                    del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
             elif fail_orbit > src_orbit:
-                del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit+1].detourTable:
+                    del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
         else: # failed_dir is left or left
             if fail_orbit < dest_orbit:
-                del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat+1][fail_orbit].detourTable:
+                    del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
             if fail_orbit > dest_orbit:
-                del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat+1][fail_orbit].detourTable:
+                    del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
     elif fail_sat == dest_sat and fail_orbit == src_orbit: #코너 경우2
         if failed_direction == "down":
             if fail_orbit < src_orbit:
-                del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit+1].detourTable:
+                    del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
             elif fail_orbit > src_orbit:
-                del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit-1].detourTable:
+                    del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
         else: # failed_dir is left or left
             if fail_orbit < dest_orbit:
-                del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat-1][fail_orbit].detourTable:
+                    del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
             if fail_orbit > dest_orbit:
-                del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat-1][fail_orbit].detourTable:
+                    del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
 
     elif fail_sat == src_sat and fail_orbit != src_orbit: #fail_sat mhr이 src_sat mhr과 맡닿을경우
-        print("is in src sat line")
+        # print("is in src sat line")
         if failed_direction == "up": #코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
             if fail_orbit > src_orbit:
-                del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit-1].detourTable:
+                    del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
             else:
-                del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit+1].detourTable:
+                    del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
         elif failed_direction == "down":
             if fail_orbit > src_orbit:
-                del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit-1].detourTable:
+                    del mhr[fail_sat][fail_orbit-1].detourTable[destination.id]
             else:
-                del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit+1].detourTable:
+                    del mhr[fail_sat][fail_orbit+1].detourTable[destination.id]
         elif failed_direction in ["right", "left"]:
             if fail_sat < dest_sat:
-                del mhr[fail_sat][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit].detourTable:
+                    del mhr[fail_sat][fail_orbit].detourTable[destination.id]
             elif fail_sat > dest_sat:
-                del mhr[fail_sat][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit].detourTable:
+                    del mhr[fail_sat][fail_orbit].detourTable[destination.id]
 
     elif fail_orbit == src_orbit and fail_sat != dest_sat: #fail_sat mhr이 src_sat mhr과 맡닿을경우
-        print("is in src orbit line")
+        # print("is in src orbit line")
         if failed_direction in ["up", "down"]:
             if fail_orbit < dest_orbit:
-                del mhr[fail_sat][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit].detourTable:
+                    del mhr[fail_sat][fail_orbit].detourTable[destination.id]
             elif fail_orbit > dest_orbit:
-                del mhr[fail_sat][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat][fail_orbit].detourTable:
+                    del mhr[fail_sat][fail_orbit].detourTable[destination.id]
         elif failed_direction == "right":  # 코너, 하지만 위 if문에 포함안되는 코너 (중간에 polar가 있는 번개모양 PATH에서)
-            print(fail_sat, src_sat)
+            # print(fail_sat, src_sat)
             if fail_sat > src_sat:
-                del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat-1][fail_orbit].detourTable:
+                    del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
             else:
-                del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat+1][fail_orbit].detourTable:
+                    del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
         elif failed_direction == "left":
             if fail_sat > src_sat:
-                del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat-1][fail_orbit].detourTable:
+                    del mhr[fail_sat-1][fail_orbit].detourTable[destination.id]
             else:
-                del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
+                if destination.id in mhr[fail_sat+1][fail_orbit].detourTable:
+                    del mhr[fail_sat+1][fail_orbit].detourTable[destination.id]
 
     else: #fail_sat이 dest_sat과 linear하여 selective flood가 필요할 때
         if failed_direction == "up":
             if fail_orbit < src_orbit:
                 for sat in range(fail_sat, src_sat+1):
-                    del mhr[sat][fail_orbit+1].detourTable[destination.id]
+                    if destination.id in mhr[sat][fail_orbit+1].detourTable:
+                        del mhr[sat][fail_orbit+1].detourTable[destination.id]
             elif fail_orbit > src_orbit:
                 for sat in range(fail_sat, src_sat+1):
-                    del mhr[sat][fail_orbit-1].detourTable[destination.id]
+                    if destination.id in mhr[sat][fail_orbit-1].detourTable:
+                        del mhr[sat][fail_orbit-1].detourTable[destination.id]
         elif failed_direction == "down":
             if fail_orbit < src_orbit:
                 for sat in range(src_sat, fail_sat+1):
-                    del mhr[sat][fail_orbit+1].detourTable[destination.id]
+                    if destination.id in mhr[sat][fail_orbit+1].detourTable:
+                        del mhr[sat][fail_orbit+1].detourTable[destination.id]
             elif fail_orbit > src_orbit:
                 for sat in range(src_sat, fail_sat+1):
-                    del mhr[sat][fail_orbit-1].detourTable[destination.id]
+                    if destination.id in mhr[sat][fail_orbit-1].detourTable:
+                        del mhr[sat][fail_orbit-1].detourTable[destination.id]
         elif failed_direction == "left":
             if fail_sat < src_sat:
                 for orbit in range(fail_orbit, src_orbit+1):
-                    del mhr[fail_sat+1][orbit].detourTable[destination.id]
+                    if destination.id in mhr[fail_sat+1][orbit].detourTable:
+                        del mhr[fail_sat+1][orbit].detourTable[destination.id]
             if fail_sat > src_sat:
                 for orbit in range(fail_orbit, src_orbit+1):
-                    del mhr[fail_sat-1][orbit].detourTable[destination.id]
+                    if destination.id in mhr[fail_sat-1][orbit].detourTable:
+                        del mhr[fail_sat-1][orbit].detourTable[destination.id]
         elif failed_direction == "right":
             if fail_sat < src_sat:
                 for orbit in range(src_orbit, fail_orbit+1):
-                    del mhr[fail_sat+1][orbit].detourTable[destination.id]
+                    if destination.id in mhr[fail_sat+1][orbit].detourTable:
+                        del mhr[fail_sat+1][orbit].detourTable[destination.id]
             if fail_sat > src_sat:
                 for orbit in range(src_orbit, fail_orbit+1):
-                    del mhr[fail_sat-1][orbit].detourTable[destination.id]
+                    if destination.id in mhr[fail_sat-1][orbit].detourTable:
+                        del mhr[fail_sat-1][orbit].detourTable[destination.id]
 def TEW(sat, cur_info, dest_info, orbitNum, satNum):
     # 이전 알고리즘 : 8방향
     horizontal, vertical = 0, 0
@@ -548,7 +578,7 @@ def dijkstra(mhr, cs, co, ds, do):
                     trial = -1
 
         if not available:
-            print("fail")
+            # print("fail")
         #     link failure
             fail_info.append(mhr[cs][co])
             fail_info.append(mhr[cs][co+trial])
@@ -558,7 +588,7 @@ def dijkstra(mhr, cs, co, ds, do):
             else:
                 cs -= 1
             path.append(mhr[cs][co])
-            print("detour sat:", mhr[cs][co].id)
+            # print("detour sat:", mhr[cs][co].id)
             if co < do:
                 co += 1
             else:

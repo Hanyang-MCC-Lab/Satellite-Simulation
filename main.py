@@ -100,7 +100,7 @@ class Satellite:
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
-        self.altitude = alt
+        self.altitude = alt + random.randint(-20, 20)
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
@@ -270,20 +270,21 @@ class Network:
     def get_euc_distance(self, node_A: Satellite, node_B: Satellite):
         node_A_ecef = node_A.get_ecef_info()
         node_B_ecef = node_B.get_ecef_info()
-        print(node_B_ecef)
         return math.dist(node_A_ecef, node_B_ecef)
 
     # laser 기반 delay 계산
     def get_delay(self, node_A: Satellite, node_B: Satellite):
         distance = self.get_euc_distance(node_A, node_B)
-        return distance / 3.0e8
+        return distance / 3.0e5
 
     def routing(self, start: Satellite, dest: Satellite):
         packet = Packet(start, dest)
         packet.transfer()
         a = packet.path[0]
         for b in packet.path[1:]:
+            # print(a.id, "to", b.id, ":", self.get_delay(a, b))
             packet.delay += self.get_delay(a, b)
+            # print("sum: ", packet.delay)
             a = b
         # if len(packet.fail_info) > 0:
         self.fail_log[str(len(self.log))] = packet.fail_info
@@ -347,8 +348,8 @@ class RoutingSimulator:
             random_sat = np.random.randint(0, satNum)
             self.randomSatList.append(constellations[0][random_orbit].satellites[random_sat])
         random.shuffle(self.randomSatList)
-        for k in range(int(count) * 2):  # 디버깅용
-            print(self.randomSatList[k])
+        # for k in range(int(count) * 2):  # 디버깅용
+        #     print(self.randomSatList[k])
         for j in range(int(count)):  # 다중 라우팅 병렬처리
             self.parallelProcess.append(threading.Thread(
                 target=self.network.routing(self.randomSatList[j], self.randomSatList[int(count) + j])))
@@ -610,6 +611,8 @@ def deploy_starlink():
     satRot = math.radians(360 / satNum)
     deploy(inclination, altitude, CONST_COLORS[0])
 
+def routing_result_csv():
+    write_routing_simulation_result(simulator.network.log)
 
 # 클래스 끝, 메인 로직 시작
 orbitNum = 72
@@ -671,7 +674,7 @@ scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 scene.append_to_caption("\n\n enable PAT")
 checkbox(bind=enable_PAT, checked=True)  # text to right of checkbox
-
+button(text="extract to csv", bind=routing_result_csv)
 # 메인
 time = 0
 orbit_cnt = 0
@@ -734,7 +737,8 @@ while 1:
         #                 sat.protect_timer[index] = 0
         #     if sum(sat.protect_timer) == 0:
         #         protect_sat_array.remove(sat)
-
+        # if time % 1000 == 0:
+            # simulator.random_N_to_M_simulation(5)
         time += SLOT_DURATION
         # sleep(0.2)
         if time % 5000 == 0:
