@@ -208,7 +208,7 @@ class Satellite:
         self.longitude = self.longitude % (2 * np.pi)
         is_passing_zero *= self.latitude
         if is_passing_zero < 0:
-            print("pass 0 latitude", "delta_alt:", delta_latitude)
+            # print("pass 0 latitude", "delta_alt:", delta_latitude)
             self.had_pat = [False, False]
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
@@ -737,8 +737,8 @@ while 1:
         #                 sat.protect_timer[index] = 0
         #     if sum(sat.protect_timer) == 0:
         #         protect_sat_array.remove(sat)
-        # if time % 1000 == 0:
-            # simulator.random_N_to_M_simulation(5)
+        if time % 1000 == 0:
+            simulator.random_N_to_M_simulation(5)
         time += SLOT_DURATION
         # sleep(0.2)
         if time % 5000 == 0:
@@ -766,6 +766,7 @@ while 1:
         #         seoul_to_first_sat = get_distance_with_lon_and_lat(SEOUL_LON, SEOUL_LAT,
         #                                                            first_sat_llh["lon"], first_sat_llh["lat"])
         #         la_to_last_sat = get_distance_with_lon_and_lat(LA_LON, LA_LAT,
+        #                                                        last_sat_llh["lon"], last_sat_llh["lat"])
         #                                                        last_sat_llh["lon"], last_sat_llh["lat"])
         #         print(seoul_to_first_sat, la_to_last_sat)
         #         # if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
