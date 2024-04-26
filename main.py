@@ -253,7 +253,7 @@ class Packet:
         minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,
                                                                                         satNum, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
-        self.path, self.fail_info = distributed_detour_routing(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit,
+        self.path, self.fail_info = distributed_detour_routing(constellations, minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit,
                                                                self.src, self.dst)
 
         # next_hop = MDD(self, destination, available_list)
@@ -718,7 +718,7 @@ while 1:
                         sat.change_link_state(index)
                         sat.new_link(index)
                         for fail_experience in sat.fail_experiences[index]:
-                            recovery_flood(fail_experience)
+                            recovery_flood(sat, index)
 
                         # sat.protect_timer[index] += PROTECT_TIME
                         # if sat not in protect_sat_array:
@@ -758,7 +758,7 @@ while 1:
 
         # for i in range(len(simulator.network.log)):
         #     path = simulator.network.log[i]["path"]
-        #     if simulator.network.log[i]["packet"] in veta_results:
+        #     if simupyhlator.network.log[i]["packet"] in veta_results:
         #         first_sat_llh = path[0].get_llh_info()
         #         last_sat_llh = path[-1].get_llh_info()
         #         print(first_sat_llh)
