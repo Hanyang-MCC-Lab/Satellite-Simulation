@@ -156,7 +156,7 @@ class Satellite:
                         # print(self.handover_timer[i])
                         if self not in pat_sat_array:
                             pat_sat_array.append(self)
-                        write_simulation_result(self, element, i, angle_gap, time)
+                        write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD)
                         # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
                         # print("s1:", self.x, self.y, self.z)
                         # print("s2_virtual:", self.x+laser[0], self.y+laser[1], self.z+laser[2])
@@ -357,7 +357,7 @@ class RoutingSimulator:
                 target=self.network.routing(self.randomSatList[j], self.randomSatList[int(count) + j])))
             self.parallelProcess[j].start()  # 리스트 맨 마지막 위성으로 하나의 목적지 지정
         self.parallelProcess.clear()
-        self.print_log()
+        # self.print_log()
 
     def ground_to_ground_simulation(self, s_lon, s_lat, d_lon, d_lat):
         if s_lon < 0:
@@ -539,8 +539,8 @@ def Route(t):
     simulator.one_to_one()
     t.text = "Route"
     log_list = ["None"]
-    for i in simulator.network.log:
-        log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
+    # for i in simulator.network.log:
+    #     log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
     routing_list_menu.choices = log_list
 
 
@@ -691,6 +691,7 @@ pat_available = True
 #                        math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
 set_simulation_result(LASER_ANGLE_THRESHOLD)
+set_routing_simulation_result(LASER_ANGLE_THRESHOLD)
 while 1:
 
     while setting == False:
@@ -739,8 +740,9 @@ while 1:
         #                 sat.protect_timer[index] = 0
         #     if sum(sat.protect_timer) == 0:
         #         protect_sat_array.remove(sat)
-        # if time % 1000 == 0:
-        #     simulator.random_N_to_M_simulation(5)
+        if time % 1000 == 0:
+            simulator.random_N_to_M_simulation(5)
+            print(len(simulator.network.log))
         time += SLOT_DURATION
         # sleep(0.2)
         if time % 5000 == 0:
@@ -821,6 +823,7 @@ while 1:
         #         #             simulator.show_result_to_GUI(i)
         #         #         break
         #         #     before = current
-
+        if time == 600000:
+            running = True
         if running == True:
             break

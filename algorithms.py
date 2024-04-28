@@ -107,33 +107,33 @@ def get_optimal_row_line(mhr, src_sat, dest_sat):
 
 
 def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest):
-    print(src.id, "to", dest.id)
+    # print(src.id, "to", dest.id)
     vertical_line = get_optimal_row_line(mhr, src_sat, dest_sat)
     need_flood = False
     path = []
     fail_info = []
     fail_history = []
     count = 0
-    print("===MHR===")
-    for i in mhr:
-        for j in i:
-            print(j.id, end=" ")
-        print()
-    print("length", len(mhr))
+    # print("===MHR===")
+    # for i in mhr:
+    #     for j in i:
+    #         print(j.id, end=" ")
+    #     print()
+    # print("length", len(mhr))
     dest_info = dest.get_llh_info()
     cur_sat, cur_orbit = src_sat, src_orbit
     while cur_sat != dest_sat or cur_orbit != dest_orbit:  # 경로의 마지막이 destination일 때까지
-        sleep(0.1)
+        # sleep(0.1)
         success = True
         path.append(mhr[cur_sat][cur_orbit])
         cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
         cur_id = mhr[cur_sat][cur_orbit].id
-        print("=====", mhr[cur_sat][cur_orbit].id, "=====")
-        print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
-        print("current:", cur_sat, cur_orbit)
+        # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+        # print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
+        # print("current:", cur_sat, cur_orbit)
         if dest.id in mhr[cur_sat][cur_orbit].detourTable:
             # detour table에 의한 라우팅
-            print(cur_id, "has a direction in its detour table!")
+            # print(cur_id, "has a direction in its detour table!")
             direction = mhr[cur_sat][cur_orbit].detourTable[dest.id]
             # 링크 상태를 고려함
             if direction == "right":
@@ -144,27 +144,22 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
         else:
             # 일반 라우팅
             # step1. 방향결정
-            if cur_orbit != dest_orbit and (
-                    cur_sat == vertical_line or vertical_line < cur_sat <= dest_sat or dest_sat <= cur_sat < vertical_line):
+            if (cur_orbit != dest_orbit and cur_sat == vertical_line) or need_flood:
                 if cur_orbit > dest_orbit:
                     direction = "left"
                 else:
                     direction = "right"
             else:
                 if cur_sat > dest_sat:
-                    if mhr[cur_sat - 1][cur_orbit] not in path:
-                        direction = "up"
-                    else:
-                        direction = "left" if cur_orbit > dest_orbit else "right"
+                    direction = "up"
                 else:
-                    if mhr[cur_sat + 1][cur_orbit] not in path:
-                        direction = "down"
-                    else:
-                        direction = "left" if cur_orbit > dest_orbit else "right"
+                    direction = "down"
+
             if (direction == "left" and mhr[cur_sat][cur_orbit].link_state[0] == 0) or (direction == "right" and mhr[cur_sat][cur_orbit].link_state[1] == 0):
                 success = False
             else:
                 success = True
+
             if need_flood:
                 fail_info[-1][-1].fail_experiences[0 if direction == "left" else 1].append(
                     selective_flood(mhr, src_sat, src_orbit, cur_sat, cur_orbit, dest, direction
@@ -181,9 +176,9 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
                 cur_orbit -= 1
             else:  # direction == "right"
                 cur_orbit += 1
-            print("next hop is", mhr[cur_sat][cur_orbit].id)
+            # print("next hop is", mhr[cur_sat][cur_orbit].id)
         else:  # 실패
-            print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
+            # print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
             need_flood = True
             sec_direction = ""
             fail_history.append((cur_sat, cur_orbit))
@@ -200,24 +195,10 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
             fail_info.append(fail_pair)
             mhr[cur_sat][cur_orbit].should_notice_recovery = True
             # selective_flood(mhr, src_sat, src_orbit, dest_sat, dest_orbit, cur_sat, cur_orbit, dest, direction)
-            if (src_sat <= cur_sat < dest_sat and src_sat == 0) or (dest_sat == cur_sat and src_sat != 0):
-                if len(fail_history) > 0:
-                    if (cur_sat+1, cur_orbit) in fail_history:
-                        sec_direction = "up"
-                    else:
-                        sec_direction = "down"
-                else:
-                    sec_direction = "down"
-            elif (dest_sat < cur_sat <= src_sat and src_sat != 0) or (dest_sat == cur_sat and src_sat == 0):
-                if len(fail_history) > 0:
-                    if (cur_sat-1, cur_orbit) in fail_history:
-                        sec_direction = "down"
-                    else:
-                        sec_direction = "up"
-                else:
-                    sec_direction = "up"
+            if src_sat >= dest_sat:
+                sec_direction = "down"
             else:
-                print("exception")
+                sec_direction = "up"
             cur_sat += 1 if sec_direction == "down" else -1
             if cur_sat >= len(mhr) or cur_sat < 0:
                 mhr = extend_mhr(constellation, mhr, sec_direction)
@@ -225,21 +206,16 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
                     cur_sat += 1
                     src_sat += 1
                     dest_sat += 1
-                print("extending mhr")
-                print("===MHR===")
-                print(mhr)
-                for i in mhr:
-                    for j in i:
-                        print(j.id, end=" ")
-                    print()
-            print("move instantly to", mhr[cur_sat][cur_orbit].id)
-            if abs(src_sat-fail_sat) <= abs(src_sat-cur_sat):
-                fail_pair[-1].fail_experiences[0 if direction == "left" else 1].append(selective_flood(
-                    mhr, src_sat, src_orbit, fail_sat, fail_orbit, dest, sec_direction
-                ))
-                need_flood = False
+            #     print("extending mhr")
+            #     print("===MHR===")
+            #     print(mhr)
+            #     for i in mhr:
+            #         for j in i:
+            #             print(j.id, end=" ")
+            #         print()
+            # print("move instantly to", mhr[cur_sat][cur_orbit].id)
         count += 1
-        path.append(mhr[cur_sat][cur_orbit])
+    path.append(mhr[cur_sat][cur_orbit])
 
     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
     return path, fail_info
@@ -248,7 +224,7 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
 
 def selective_flood(mhr, src_sat, src_orbit, fail_sat, fail_orbit, destination, sec_direction):
     # 진행 경우, 1. inter-intra, 2. intra-inter, 3. intra-inter-intra
-    print(sec_direction)
+    # print(sec_direction)
     flood_path = []
     flood_direction = {"down": (-1, 0), "up": (1, 0), "right": (0, -1), "left": (0, 1)}
     csat, corb = fail_sat, fail_orbit
@@ -276,10 +252,10 @@ def selective_flood(mhr, src_sat, src_orbit, fail_sat, fail_orbit, destination, 
         mhr[csat][corb].detourTable[destination.id] = sec_direction
         flood_path.append(mhr[csat][corb])
 
-    print("flood path: ", end="")
-    for fsat in flood_path:
-        print(fsat.id, end=" ")
-    print()
+    # print("flood path: ", end="")
+    # for fsat in flood_path:
+    #     print(fsat.id, end=" ")
+    # print()
 
     return [flood_path, destination.id]
 
