@@ -3,6 +3,7 @@ import math
 
 from vpython import vpython
 
+TOLERABLE_ANGLE = math.radians(0.4)
 LASER_ANGLE_THRESHOLD = 0.000025 # 25 마이크로라디안
 LASER_DISTANCE_THRESHOLD = 1
 # ANGULAR_VELOCITY = 0.00057595865 + 0.001093099711 # 0.033도

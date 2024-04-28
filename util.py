@@ -67,6 +67,7 @@ def write_gap_angle(sat1, sat2, direction, gap, time):
     f.close()
 
 def write_routing_simulation_result(data, gamma):
+    print(data)
     filename = f'./SimulationResult/result{gamma}.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)

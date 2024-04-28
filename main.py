@@ -145,13 +145,14 @@ class Satellite:
                     # if measure > LASER_DISTANCE_THRESHOLD:
                     # print(angle_gap)
                     if max(0, angle_gap - ANGULAR_VELOCITY_PER_SLOT) > LASER_ANGLE_THRESHOLD:
+                    # if angle_gap > TOLERABLE_ANGLE:
                         if self.sphere_attr.color == color.red:
                             self.sphere_attr.color = color.black
                         else:
                             self.sphere_attr.color = color.red
                         self.change_link_state(i)
                         self.handover_timer[i] += HANDOVER_TIME
-                        self.had_pat[i] = True
+                        # self.had_pat[i] = True
                         # print(self.handover_timer[i])
                         if self not in pat_sat_array:
                             pat_sat_array.append(self)
@@ -163,6 +164,7 @@ class Satellite:
                     else:
                         # self.before_angle_oab_array[i] = new_angle_oab
                         self.new_link(i)
+                        # continue
         else:
             for i in range(len(self.link_sat)):
                 self.new_link(i)
@@ -612,7 +614,7 @@ def deploy_starlink():
     deploy(inclination, altitude, CONST_COLORS[0])
 
 def routing_result_csv():
-    write_routing_simulation_result(simulator.network.log, )
+    write_routing_simulation_result(simulator.network.log, LASER_ANGLE_THRESHOLD)
 
 # 클래스 끝, 메인 로직 시작
 orbitNum = 72
@@ -688,7 +690,7 @@ pat_available = True
 # losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
 #                        math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
-set_simulation_result()
+set_simulation_result(LASER_ANGLE_THRESHOLD)
 while 1:
 
     while setting == False:
