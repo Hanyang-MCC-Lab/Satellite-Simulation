@@ -3,11 +3,11 @@ import math
 import os
 
 import numpy as np
-def set_simulation_result():
+def set_simulation_result(gamma):
     folder_path = f'./SimulationResult/'
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
-    filename = folder_path + 'result.csv'
+    filename = folder_path + f'result{gamma}.csv'
 
     f = open(filename, 'w', encoding='utf-8', newline='')
     wr = csv.writer(f)
@@ -66,8 +66,8 @@ def write_gap_angle(sat1, sat2, direction, gap, time):
     wr.writerow(row_data)
     f.close()
 
-def write_routing_simulation_result(data):
-    filename = f'./SimulationResult/result.csv'
+def write_routing_simulation_result(data, gamma):
+    filename = f'./SimulationResult/result{gamma}.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
         title = []

@@ -253,7 +253,7 @@ class Packet:
         minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,
                                                                                         satNum, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
-        self.path, self.fail_info = distributed_detour_routing(constellations, minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit,
+        self.path, self.fail_info = distributed_detour_routing(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit,
                                                                self.src, self.dst)
 
         # next_hop = MDD(self, destination, available_list)
@@ -612,7 +612,7 @@ def deploy_starlink():
     deploy(inclination, altitude, CONST_COLORS[0])
 
 def routing_result_csv():
-    write_routing_simulation_result(simulator.network.log)
+    write_routing_simulation_result(simulator.network.log, )
 
 # 클래스 끝, 메인 로직 시작
 orbitNum = 72
@@ -737,8 +737,8 @@ while 1:
         #                 sat.protect_timer[index] = 0
         #     if sum(sat.protect_timer) == 0:
         #         protect_sat_array.remove(sat)
-        if time % 1000 == 0:
-            simulator.random_N_to_M_simulation(5)
+        # if time % 1000 == 0:
+        #     simulator.random_N_to_M_simulation(5)
         time += SLOT_DURATION
         # sleep(0.2)
         if time % 5000 == 0:
