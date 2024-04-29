@@ -100,13 +100,13 @@ class Satellite:
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
-        self.altitude = alt + random.randint(-20, 20)
+        self.altitude = alt
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
         self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
                                      math.cos(theta))) % (2 * np.pi) + orbit.lon_of_ascending
         # ECEF 좌표
-        self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
+        self.x, self.y, self.z = update_ECEF(self.orbit.inclination, self.true_anomaly, self.orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100, 100, 100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
@@ -144,19 +144,23 @@ class Satellite:
                     # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
                     # if measure > LASER_DISTANCE_THRESHOLD:
                     # print(angle_gap)
-                    if max(0, angle_gap - ANGULAR_VELOCITY_PER_SLOT) > LASER_ANGLE_THRESHOLD:
-                    # if angle_gap > TOLERABLE_ANGLE:
-                        if self.sphere_attr.color == color.red:
-                            self.sphere_attr.color = color.black
-                        else:
-                            self.sphere_attr.color = color.red
+                    # 4try
+                    # cur_azimuth = get_azimuth(self, element)
+                    # angle_gap = abs(self.laser_azimuth[i] - cur_azimuth)
+                    # if max(0, angle_gap - TOLERABLE_ANGLE) > LASER_ANGLE_THRESHOLD:
+                    # print("angle gap:", angle_gap, "tolerable angle:", TOLERABLE_ANGLE)
+                    if angle_gap > TOLERABLE_ANGLE:
                         self.change_link_state(i)
                         self.handover_timer[i] += HANDOVER_TIME
                         # self.had_pat[i] = True
                         # print(self.handover_timer[i])
+                        if not (self.link_state[0] or self.link_state[1]):
+                            self.sphere_attr.color = color.black
+                        else:
+                            self.sphere_attr.color = color.red
                         if self not in pat_sat_array:
                             pat_sat_array.append(self)
-                        write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD)
+                        write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD, get_euc_distance([self.x, self.y, self.z], [element.x, element.y, element.z]))
                         # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
                         # print("s1:", self.x, self.y, self.z)
                         # print("s2_virtual:", self.x+laser[0], self.y+laser[1], self.z+laser[2])
@@ -213,7 +217,8 @@ class Satellite:
             # print("pass 0 latitude", "delta_alt:", delta_latitude)
             self.had_pat = [False, False]
         # ECEF 좌표
-        self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
+        self.x, self.y, self.z = update_ECEF(self.orbit.inclination, self.true_anomaly, self.orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
+        # self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 3try
         # for i in range(len(self.link_sat)):
         #     # print("before azi:", self.laser_azimuth[i], "before ele:", self.laser_elevation[i], "before vec:", self.laser_vec[i])
@@ -277,7 +282,8 @@ class Network:
     # laser 기반 delay 계산
     def get_delay(self, node_A: Satellite, node_B: Satellite):
         distance = self.get_euc_distance(node_A, node_B)
-        return distance / 3.0e5
+        # print(distance)
+        return (distance / 3.0e5)*1000
 
     def routing(self, start: Satellite, dest: Satellite):
         packet = Packet(start, dest)
@@ -539,8 +545,8 @@ def Route(t):
     simulator.one_to_one()
     t.text = "Route"
     log_list = ["None"]
-    # for i in simulator.network.log:
-    #     log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
+    for i in simulator.network.log:
+        log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
     routing_list_menu.choices = log_list
 
 
@@ -742,7 +748,7 @@ while 1:
         #         protect_sat_array.remove(sat)
         if time % 1000 == 0:
             simulator.random_N_to_M_simulation(5)
-            print(len(simulator.network.log))
+        #     print(len(simulator.network.log))
         time += SLOT_DURATION
         # sleep(0.2)
         if time % 5000 == 0:
@@ -823,7 +829,7 @@ while 1:
         #         #             simulator.show_result_to_GUI(i)
         #         #         break
         #         #     before = current
-        if time == 600000:
+        if time == 200000:
             running = True
         if running == True:
             break

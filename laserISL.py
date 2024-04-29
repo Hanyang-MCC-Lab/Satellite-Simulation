@@ -18,6 +18,8 @@ def calc_angle_between_vectors(a, b):
 
 
 def PAT(sat1, sat2):
+    # 4try
+    # sat1.laser_azimuth.append(get_azimuth(sat1, sat2))
     sat1.before_inter_sat_vec_arr.append(np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z]))
     sat1.link_sat.append(sat2)
     ## 2try
@@ -34,7 +36,9 @@ def PAT(sat1, sat2):
 
 
 def re_PAT(sat1, sat2, direction):
-    sat1.before_inter_sat_vec_arr[direction] = np.array(np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z]))
+    sat1.before_inter_sat_vec_arr[direction] = np.array([sat2.x - sat1.x, sat2.y - sat1.y, sat2.z - sat1.z])
+    # 4try
+    # sat1.laser_azimuth[direction] = get_azimuth(sat1, sat2)
 
     # 2try
     # laser = np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z])
@@ -74,3 +78,23 @@ def initialize_lisl(constellation):
             else:
                 PAT(cur_sat, constellation[i - 1].satellites[j])
                 PAT(cur_sat, constellation[i + 1].satellites[j])
+
+
+def get_vp(s1, s2):
+    coordinates_s1 = np.array([s1.x, s1.y, s1.z])
+    coordinates_s2 = np.array([s2.x, s2.y, s2.z])
+    dot_product = np.dot(coordinates_s1, coordinates_s2)
+    norm_s1_squared = np.dot(coordinates_s1, coordinates_s1)
+    projection = (dot_product * coordinates_s1) / norm_s1_squared
+    vp = coordinates_s2 - projection
+
+    return vp
+
+
+def get_azimuth(s1, s2):
+    vm = np.array([s1.vx, s1.vy, s1.vz])
+    vp = get_vp(s1, s2)
+    cos_value = np.dot(vp, vm) / (np.linalg.norm(vp) * np.linalg.norm(vm))
+    azimuth = np.arccos(cos_value)
+
+    return azimuth
