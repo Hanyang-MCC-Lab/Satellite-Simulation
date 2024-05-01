@@ -622,3 +622,23 @@ def dtdr(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest
 
     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
     return path, fail_info
+
+def constellation_to_array(constellation, src, dest):
+    result = []
+    src_info, dst_info = src.get_sat_info(), dest.get_sat_info()
+    sat_num = len(constellation[0].satellites)
+    s_sat, s_orbit = (sat_num-1) - src_info["satellite"], src_info["orbit"]
+    d_sat, d_orbit = (sat_num-1) - dst_info["satellite"], dst_info["orbit"]
+    for sat in range(sat_num):
+        sat_line = []
+        for orbit in constellation:
+            sat_line.append(orbit.satellites[sat])
+        result.insert(0, sat_line)
+    return result, s_sat, s_orbit, d_sat, d_orbit
+
+def sort_sat_line_by_optimal(constellation, s_sat, d_sat):
+
+def opspf(constellation, s_sat, s_orbit, dst_sat, dst_orbit)
+    path = []
+    fail_info = []
+    return path, fail_info
