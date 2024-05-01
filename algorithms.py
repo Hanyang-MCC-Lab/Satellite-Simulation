@@ -637,8 +637,95 @@ def constellation_to_array(constellation, src, dest):
     return result, s_sat, s_orbit, d_sat, d_orbit
 
 def sort_sat_line_by_optimal(constellation, s_sat, d_sat):
-
-def opspf(constellation, s_sat, s_orbit, dst_sat, dst_orbit)
+    return 1
+def opspf(constellation, s_sat, s_orbit, dst_sat, dst_orbit):
     path = []
     fail_info = []
+    fail_history = []
+    count = 0
+    # print("===MHR===")
+    # for i in mhr:
+    #     for j in i:
+    #         print(j.id, end=" ")
+    #     print()
+    # print("length", len(mhr))
+    dest_info = dest.get_llh_info()
+    cur_sat, cur_orbit = src_sat, src_orbit
+    while cur_sat != dest_sat or cur_orbit != dest_orbit:  # 경로의 마지막이 destination일 때까지
+        # sleep(0.1)
+        success = True
+        path.append(mhr[cur_sat][cur_orbit])
+        cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
+        cur_id = mhr[cur_sat][cur_orbit].id
+        # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+        # print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
+        if dest.id in mhr[cur_sat][cur_orbit].detourTable:
+            # detour table에 의한 라우팅
+            # print(cur_id, "has a direction in its detour table!")
+            direction = mhr[cur_sat][cur_orbit].detourTable[dest.id]
+            # 링크 상태를 고려함
+            if direction == "right":
+                success = True if mhr[cur_sat][cur_orbit].link_state[1] == 1 else False
+            elif direction == "left":
+                success = True if mhr[cur_sat][cur_orbit].link_state[0] == 1 else False
+
+        else:
+            # 일반 라우팅
+            # step1. 방향결정
+            direction = get_direction(cur_orbit, dest_orbit, src_orbit, cur_sat, dest_sat, src_sat, opt_line)
+
+        if (direction == "left" and mhr[cur_sat][cur_orbit].link_state[0] == 0) or (
+                direction == "right" and mhr[cur_sat][cur_orbit].link_state[1] == 0):
+            success = False
+        else:
+            success = True
+
+        # step2. 성공/실패에 따른 알고리즘 분리
+        if success:  # 성공
+            if direction == "up":
+                cur_sat -= 1
+            elif direction == "down":
+                cur_sat += 1
+            elif direction == "left":
+                cur_orbit -= 1
+            else:  # direction == "right"
+                cur_orbit += 1
+            # print("next hop is", mhr[cur_sat][cur_orbit].id)
+        else:  # 실패
+            # print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
+            sec_direction = ""
+            fail_history.append((cur_sat, cur_orbit))
+            fail_sat, fail_orbit = cur_sat, cur_orbit
+            fail_pair = [mhr[cur_sat][cur_orbit]]
+            if direction == "left":
+                fail_pair.append(mhr[cur_sat][cur_orbit - 1])
+            else:
+                fail_pair.append(mhr[cur_sat][cur_orbit + 1])
+            fail_info.append(fail_pair)
+            fail_info[-1][-1].should_notice_recovery = True
+            fail_info[-1][-1].fail_experiences[0 if direction == "left" else 1].append(
+                n_hop_flood(2, mhr, dest_sat, dest_orbit, src_orbit, cur_sat, cur_orbit, src_sat, opt_line, dest,
+                            direction)
+            )
+            sec_direction = mhr[cur_sat][cur_orbit].detourTable[dest.id]
+            cur_sat += 1 if sec_direction == "down" else -1
+            if cur_sat >= len(mhr) or cur_sat < 0:
+                mhr = extend_mhr(constellation, mhr, sec_direction)
+                if sec_direction == "up":  # 위로 확장됨에 따른 src_sat, dest_sat, fail_sat 수정
+                    cur_sat += 1
+                    src_sat += 1
+                    dest_sat += 1
+            #     print("extending mhr")
+            #     print("===MHR===")
+            #     print(mhr)
+            #     for i in mhr:
+            #         for j in i:
+            #             print(j.id, end=" ")
+            #         print()
+            # print("move instantly to", mhr[cur_sat][cur_orbit].id)
+        count += 1
+    path.append(mhr[cur_sat][cur_orbit])
+
+    # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
+
     return path, fail_info
