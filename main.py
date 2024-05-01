@@ -260,8 +260,8 @@ class Packet:
         minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,
                                                                                         satNum, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
-        # self.path, self.fail_info = distributed_detour_routing(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        self.path, self.fail_info = dtdr(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        self.path, self.fail_info = distributed_detour_routing(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        # self.path, self.fail_info = dtdr(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
 
         # next_hop = MDD(self, destination, available_list)
         # next_hop = MDA(self, destination, available_list)
