@@ -11,7 +11,7 @@ def set_simulation_result(gamma):
     folder_path = f'./SimulationResult/{ALGORITHM}/'
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
-    filename = folder_path + f'pat_result{gamma}.csv'
+    filename = folder_path + f'{ALGORITHM}pat_result{gamma}.csv'
 
     f = open(filename, 'w', encoding='utf-8', newline='')
     wr = csv.writer(f)
@@ -31,7 +31,7 @@ def set_simulation_result(gamma):
     wr.writerow(title)
     f.close()
 def clear_simulation_result(gamma):
-    filename = f'./SimulationResult/{ALGORITHM}/pat_result{gamma}.csv'
+    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}pat_result{gamma}.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
         title = []
@@ -51,7 +51,7 @@ def clear_simulation_result(gamma):
         file.close()
 def write_simulation_result(sat1, sat2, direction, gap, time, gamma, distance):
     link_d = ["left", "right"]
-    filename = f'./SimulationResult/{ALGORITHM}/pat_result{gamma}.csv'
+    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}pat_result{gamma}.csv'
     f = open(filename, 'a', encoding='utf-8', newline='')
     wr = csv.writer(f)
     s1 = sat1.get_llh_info()
@@ -62,7 +62,7 @@ def write_simulation_result(sat1, sat2, direction, gap, time, gamma, distance):
     f.close()
 
 def set_routing_simulation_result(gamma):
-    filename = f'./SimulationResult/{ALGORITHM}/result{gamma}.csv'
+    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
         title = ['index', 'source', 'destination', 'hops', 'fail count', 'delay']
@@ -70,7 +70,7 @@ def set_routing_simulation_result(gamma):
         file.close()
 def write_routing_simulation_result(data, gamma):
     print(data)
-    filename = f'./SimulationResult/{ALGORITHM}/result{gamma}.csv'
+    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}.csv'
     with open(filename, 'a', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
         for log in data:

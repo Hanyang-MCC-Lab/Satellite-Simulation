@@ -832,4 +832,5 @@ while 1:
         if time == 200000:
             running = True
         if running == True:
+            write_routing_simulation_result(simulator.network.log, LASER_ANGLE_THRESHOLD)
             break

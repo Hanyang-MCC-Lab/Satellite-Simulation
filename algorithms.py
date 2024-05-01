@@ -115,26 +115,26 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
     fail_info = []
     fail_history = []
     count = 0
-    print("===MHR===")
-    for i in mhr:
-        for j in i:
-            print(j.id, end=" ")
-        print()
+    # print("===MHR===")
+    # for i in mhr:
+    #     for j in i:
+    #         print(j.id, end=" ")
+    #     print()
     # print("length", len(mhr))
     dest_info = dest.get_llh_info()
     cur_sat, cur_orbit = src_sat, src_orbit
     while cur_sat != dest_sat or cur_orbit != dest_orbit:  # 경로의 마지막이 destination일 때까지
-        sleep(0.1)
+        # sleep(0.1)
         success = True
         path.append(mhr[cur_sat][cur_orbit])
         cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
         cur_id = mhr[cur_sat][cur_orbit].id
-        print("=====", mhr[cur_sat][cur_orbit].id, "=====")
-        print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
-        print("current:", cur_sat, cur_orbit)
+        # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+        # print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
+        # print("current:", cur_sat, cur_orbit)
         if dest.id in mhr[cur_sat][cur_orbit].detourTable:
             # detour table에 의한 라우팅
-            print(cur_id, "has a direction in its detour table!")
+            # print(cur_id, "has a direction in its detour table!")
             direction = mhr[cur_sat][cur_orbit].detourTable[dest.id]
             # 링크 상태를 고려함
             if direction == "right":
@@ -146,6 +146,11 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
             # 일반 라우팅
             # step1. 방향결정
             direction = get_direction(cur_orbit, dest_orbit, src_orbit, cur_sat, dest_sat, src_orbit, opt_line)
+            if need_flood:
+                if cur_orbit > dest_orbit:
+                    direction = "left"
+                else:
+                    direction = "right"
             # if (cur_orbit != dest_orbit and cur_sat == vertical_line) or need_flood:
             #     if cur_orbit > dest_orbit:
             #         direction = "left"
@@ -208,14 +213,14 @@ def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat,
                     cur_sat += 1
                     src_sat += 1
                     dest_sat += 1
-                print("extending mhr")
-                print("===MHR===")
-                print(mhr)
-                for i in mhr:
-                    for j in i:
-                        print(j.id, end=" ")
-                    print()
-            print("move instantly to", mhr[cur_sat][cur_orbit].id)
+            #     print("extending mhr")
+            #     print("===MHR===")
+            #     print(mhr)
+            #     for i in mhr:
+            #         for j in i:
+            #             print(j.id, end=" ")
+            #         print()
+            # print("move instantly to", mhr[cur_sat][cur_orbit].id)
         count += 1
     path.append(mhr[cur_sat][cur_orbit])
 
@@ -527,7 +532,7 @@ def n_hop_flood(n, mhr, dest_sat, dest_orbit, src_orbit, cur_sat, cur_orbit, src
 
 
 def dtdr(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest):
-    # print(src.id, "to", dest.id)
+    print(src.id, "to", dest.id)
     opt_line = get_optimal_row_line(mhr, src_sat, dest_sat)
     path = []
     fail_info = []
