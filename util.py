@@ -57,7 +57,7 @@ def write_simulation_result(sat1, sat2, direction, gap, time, gamma, distance):
     s1 = sat1.get_llh_info()
     s2 = sat2.get_llh_info()
 
-    row_data = [sat1.id, s1["lat"], s1["lon"], s1["alt"], sat2.id, s2["lat"], s2["lon"], s2["alt"], link_d[direction], gap, time, distance]
+    row_data = [sat1.id, math.degrees(sat1.true_anomaly), s1["lon"], s1["alt"], sat2.id, s2["lat"], s2["lon"], s2["alt"], link_d[direction], gap, time, distance]
     wr.writerow(row_data)
     f.close()
 
@@ -65,7 +65,7 @@ def set_routing_simulation_result(gamma):
     filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
-        title = ['index', 'source', 'destination', 'hops', 'fail count', 'delay']
+        title = ['index', 'source', 'destination', 'hops', 'fail count', 'delay', 'overhead_signal']
         wr.writerow(title)
         file.close()
 def write_routing_simulation_result(data, gamma):
@@ -74,7 +74,7 @@ def write_routing_simulation_result(data, gamma):
     with open(filename, 'a', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
         for log in data:
-            row_data = [log.index, log.src.id, log.dst.id, len(log.path), len(log.fail_info), log.delay]
+            row_data = [log.index, log.src.id, log.dst.id, len(log.path), len(log.fail_info), log.delay, log.overhead_signal]
             wr.writerow(row_data)
         file.close()
 def update_ECEF(inc, true_anomaly, ascending_node, alt):

@@ -36,7 +36,7 @@ class Orbit:
         self.inclination = inclination
         self.lon_of_ascending = lon_of_ascending
         self.semi_major_axis = CONST_EARTH_RADIUS
-        self.phasing_radian = math.radians((PHASING_PARAMETER / orbitNum) * index)
+        self.phasing_radian = math.radians(360*(PHASING_PARAMETER / (orbitNum*satNum)) * index)
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
         self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.3,
                                axis=vec(-1 * math.sin(inclination) * math.cos(lon_of_ascending),
@@ -45,7 +45,7 @@ class Orbit:
                                color=color, thickness=15, radius=self.semi_major_axis + altitude, )
         # 위성 배치
         for idx in range(satNum):
-            sat = Satellite(self, idx, inclination, altitude, idx * satRot + self.phasing_radian)
+            sat = Satellite(self, idx, inclination, altitude, (idx * satRot + self.phasing_radian) % (2*math.pi))
             self.satellites.append(sat)
 
     def get_orbit_info(self):
@@ -97,6 +97,7 @@ class Satellite:
 
         self.detourTable = {}
         self.should_notice_recovery = False
+        self.sat_index = sat_index
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
@@ -123,9 +124,16 @@ class Satellite:
             else:
                 self.state = 'down'
                 self.sphere_attr.color = color.cyan
+        if self.sat_index == 0:
+            self.sphere_attr.color = color.black
+        if self.sat_index == 1:
+            self.sphere_attr.color = color.white
+        if self.sat_index == 2:
+            self.sphere_attr.color = color.green
 
     def check_link_state(self):
         global pat_available
+        global routing_table
         if pat_available:
             for i in range(len(self.link_sat)):
                 if (not self.had_pat[i]) and self.link_state[i] == 1:
@@ -156,11 +164,14 @@ class Satellite:
                         # print(self.handover_timer[i])
                         if not (self.link_state[0] or self.link_state[1]):
                             self.sphere_attr.color = color.black
+                            if ALGORITHM == "OPSF":
+                                routing_table.append(self.id)
                         else:
                             self.sphere_attr.color = color.red
                         if self not in pat_sat_array:
                             pat_sat_array.append(self)
-                        write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD, get_euc_distance([self.x, self.y, self.z], [element.x, element.y, element.z]))
+                        if self.id == "SAT-0-0":
+                            write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD, get_euc_distance([self.x, self.y, self.z], [element.x, element.y, element.z]))
                         # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
                         # print("s1:", self.x, self.y, self.z)
                         # print("s2_virtual:", self.x+laser[0], self.y+laser[1], self.z+laser[2])
@@ -252,22 +263,21 @@ class Packet:
         self.dst = dst
         self.name = "[" + self.src.id + "->" + self.dst.id + "]"
         self.path = []
+        self.overhead_signal = 0
         self.delay = 0
         self.fail_info = []
 
     def transfer(self):
+        global routing_table
         # 최적 위성 탐색
-        if ALGORITHM == "OPSPF":
+        if ALGORITHM == "OPSF" or ALGORITHM == "OPSPF":
             region, s_sat, s_orbit, dst_sat, dst_orbit = constellation_to_array(constellations[0], self.src, self.dst)
-        minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,
-                                                                                        satNum, constellations[0])
+        else:
+            minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,satNum, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
-        # self.path, self.fail_info = distributed_detour_routing(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        self.path, self.fail_info = dtdr(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        # self.path, self.fail_info = opspf(region, s_sat, s_orbit, dst_sat, dst_orbit)
-        # next_hop = MDD(self, destination, available_list)
-        # next_hop = MDA(self, destination, available_list)
-        # next_hop = TEW(self, self.get_sat_info(), destination.get_sat_info(), orbitNum, satNum)
+        # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        self.path, self.fail_info, self.overhead_signal = dtdr(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        # self.path, self.fail_info, routing_table, self.overhead_signal = opspf(region, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
 
 
 class Network:
@@ -367,7 +377,10 @@ class RoutingSimulator:
         self.parallelProcess.clear()
         # self.print_log()
 
-    def ground_to_ground_simulation(self, s_lon, s_lat, d_lon, d_lat):
+    def ground_to_ground_simulation(self):
+        src, dst = ground_Src(ground_src), ground_Dst(ground_dst)
+        s_lon, s_lat = CITY_INFO[src]
+        d_lon, d_lat = CITY_INFO[dst]
         if s_lon < 0:
             s_lon += 360
         if d_lon < 0:
@@ -375,7 +388,6 @@ class RoutingSimulator:
         start = get_nearest_sat(s_lon, s_lat, constellations)
         end = get_nearest_sat(d_lon, d_lat, constellations)
         simulator.network.routing(start, end)
-        veta_results.append(self.network.log[-1]["packet"])
         self.print_log()
         return 0
 
@@ -552,12 +564,12 @@ def Route(t):
     routing_list_menu.choices = log_list
 
 
-def seoul_to_la(t):
+def ground(t):
     t.text = "Routing"
-    simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-    t.text = "Seoul -> LA (veta)"
-    log_list = routing_list_menu.choices
-    log_list.append("[veta] SEOUL to LA")
+    simulator.ground_to_ground_simulation()
+    log_list = ["None"]
+    for i in simulator.network.log:
+        log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
     routing_list_menu.choices = log_list
 
 
@@ -575,6 +587,12 @@ def Src(q):
 
 def Dst(d):
     return d.text
+
+def ground_Src(g_src):
+    return g_src.text
+
+def ground_Dst(g_dst):
+    return g_dst.text
 
 
 def Count(c):
@@ -635,6 +653,7 @@ satRot = math.radians(360 / satNum)  # 위성회전각도
 constellations = []
 pat_sat_array = []
 protect_sat_array = []
+routing_table = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
@@ -665,7 +684,7 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 running = True
 setting = True
 # scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
-scene.caption = "\n                    Orbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source       / Destination\n\n"
+scene.caption = "\n                    Orbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source(sat)       / Destination(sat)\n\n"
 button(text="Starlink Phase1", bind=deploy_starlink)
 n = winput(bind=Inc, width=120, type="numeric")
 i = winput(bind=Alt, width=120, type="numeric")
@@ -680,6 +699,11 @@ d = winput(bind=Dst, width=120, type="string")
 button(text="Route", bind=Route)
 # button(text="Seoul -> LA (veta)", bind=seoul_to_la)
 button(text="Reset detour tables", bind=reset_detour_table)
+scene.append_to_caption("\n\n ground to ground routing")
+ground_src = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
+ground_dst = winput(bind=Dst, width=120, type="string")
+# cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
+button(text="ground Route", bind=ground)
 scene.append_to_caption("\n\n Routing result list  :  ")
 routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
 scene.append_to_caption("\n\n enable PAT")
@@ -728,14 +752,17 @@ while 1:
                         sat.handover_timer[index] = 0
                         sat.change_link_state(index)
                         sat.new_link(index)
-                        for fail_experience in sat.fail_experiences[index]:
-                            recovery_flood(sat, index)
+                        if ALGORITHM != "OPSPF" and ALGORITHM != "OPSF":
+                            for fail_experience in sat.fail_experiences[index]:
+                                recovery_flood(sat, index)
 
                         # sat.protect_timer[index] += PROTECT_TIME
                         # if sat not in protect_sat_array:
                         #     protect_sat_array.append(sat)
                         # print(sat.handover_timer)
             if 0 not in sat.link_state:
+                if sat.id in routing_table:
+                    routing_table.remove(sat.id)
                 pat_sat_array.remove(sat)
 
         # for sat in protect_sat_array:
@@ -750,7 +777,7 @@ while 1:
         #         protect_sat_array.remove(sat)
         if time % 1000 == 0:
             simulator.random_N_to_M_simulation(5)
-        #     print(len(simulator.network.log))
+            # print(len(simulator.network.log))
         time += SLOT_DURATION
         # sleep(0.2)
         if time % 5000 == 0:
