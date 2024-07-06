@@ -73,3 +73,29 @@ def reconstruct_path(parents, target):
     path.reverse()
     return path
 
+
+import math
+
+
+def calculate_beta_and_gamma(theta_deg, h, r_e):
+    # Convert degrees to radians
+    theta_rad = math.radians(theta_deg)
+
+    # Calculate gamma
+    gamma = math.asin(r_e * math.sin(theta_rad + (math.pi / 2)) / (h + r_e))
+
+    # Calculate beta
+    beta = (math.pi / 2) - theta_rad - gamma
+
+    return beta, gamma
+
+
+# Example values
+theta = 25  # in degrees
+h = 550  # in km (altitude of the satellite)
+r_e = 6371  # in km (radius of the Earth)
+
+beta, gamma = calculate_beta_and_gamma(theta, h, r_e)
+print("Gamma:", gamma)
+print("Beta:", beta)
+print("R_s:", beta*r_e)

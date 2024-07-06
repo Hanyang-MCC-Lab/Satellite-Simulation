@@ -32,6 +32,8 @@ CITY_INFO = {'seoul': (SEOUL_LON, SEOUL_LAT),
              'canberra': (CANBERRA_LON, CANBERRA_LAT),
              'la': (LA_LON, LA_LAT)}
 
+GROUND_STATION = []
+
 real_rot_speed_per_second = 0.06263
 SLOT_DURATION = 100 # 1000 = 1s
 TOLERABLE_ANGLE = TOLERABLE_ANGLE_PER_SECOND * (SLOT_DURATION/1000)
@@ -41,4 +43,7 @@ CONST_SAT_DT = real_rot_speed_per_second * (SLOT_DURATION/1000)  # 위성 공전
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
-PHASING_PARAMETER = 2 # 17
+PHASING_PARAMETER = 3# 17
+
+DELTA_OMEGA = (2*math.pi) / 72
+DELTA_PI = (2*math.pi) / 22
