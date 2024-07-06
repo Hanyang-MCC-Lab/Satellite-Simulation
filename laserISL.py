@@ -2,6 +2,8 @@ import math
 
 import numpy as np
 
+from parameter import PHASING_PARAMETER
+
 
 def calc_angle_between_vectors(a, b):
     # Calculate the magnitudes (norms) of vectors A and B
@@ -59,25 +61,23 @@ def initialize_lisl(constellation):
         for j in range(sat_num):
             cur_sat = constellation[i].satellites[j]
             # intra-orbit
-            # if j == 0:
-            #     PAT(cur_sat, constellation[i].satellites[j + 1])
-            #     PAT(cur_sat, constellation[i].satellites[sat_num - 1])
-            # elif j == sat_num - 1:
-            #     PAT(cur_sat, constellation[i].satellites[0])
-            #     PAT(cur_sat, constellation[i].satellites[j - 1])
-            # else:
-            #     PAT(cur_sat, constellation[i].satellites[j + 1])
-            #     PAT(cur_sat, constellation[i].satellites[j - 1])
+            cur_sat.link["up"] = constellation[i].satellites[(j+1) % sat_num]
+            if j == 0:
+                cur_sat.link["down"] = constellation[i].satellites[sat_num-1]
+            else:
+                cur_sat.link["down"] = constellation[i].satellites[j-1]
             # inter-orbit
             if i == 0:
-                PAT(cur_sat, constellation[orbit_num - 1].satellites[j])
-                PAT(cur_sat, constellation[i + 1].satellites[j])
-            elif i == orbit_num - 1:
-                PAT(cur_sat, constellation[i - 1].satellites[j])
-                PAT(cur_sat, constellation[0].satellites[j])
+                cur_sat.link["left"] = constellation[orbit_num-1].satellites[(j-PHASING_PARAMETER+sat_num) % sat_num]
             else:
-                PAT(cur_sat, constellation[i - 1].satellites[j])
-                PAT(cur_sat, constellation[i + 1].satellites[j])
+                cur_sat.link["left"] = constellation[i-1].satellites[j]
+            if i == orbit_num-1:
+                cur_sat.link["right"] = constellation[0].satellites[(j+PHASING_PARAMETER) % sat_num]
+            else:
+                cur_sat.link["right"] = constellation[i+1].satellites[j]
+            # PAT setting
+            PAT(cur_sat, cur_sat.link["left"])
+            PAT(cur_sat, cur_sat.link["right"])
 
 
 def get_vp(s1, s2):

@@ -32,6 +32,7 @@ class Orbit:
     def __init__(self, index, inclination, altitude, lon_of_ascending, color):
         self.orbits.append(self)
         self.satellites = []
+        self.orbit_index = index
         self.id = self.id + str(index)
         self.inclination = inclination
         self.lon_of_ascending = lon_of_ascending
@@ -86,32 +87,33 @@ class Satellite:
         self.before_angle_oab_array = []
         self.fail_experiences = {0: [], 1: []}
         # laser inter satellite link
-        self.link_sat = []
-        # self.laser_vec = []
-        # self.laser_azimuth = []
-        # self.laser_elevation = []
+        self.link = {"up": None, "down": None, "left": None, "right": None, "ground": []}
         self.before_inter_sat_vec_arr = []
         # 재 PAT 방지
         self.had_pat = [False, False]
         self.protect_timer = [0, 0]
-
         self.detourTable = {}
         self.should_notice_recovery = False
         self.sat_index = sat_index
+        self.orbit_index = orbit.orbit_index
         self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
         self.altitude = alt
         # 위도, 경도
         self.latitude = math.asin(math.sin(inclination) * math.sin(theta))
-        self.longitude = (math.atan2(math.cos(inclination) * math.sin(theta),
-                                     math.cos(theta))) % (2 * np.pi) + orbit.lon_of_ascending
+        self.longitude = ((math.atan2(math.cos(inclination) * math.sin(theta),
+                                     math.cos(theta))) % (2 * np.pi) + orbit.lon_of_ascending) % (2*math.pi)
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.orbit.inclination, self.true_anomaly, self.orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100, 100, 100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
         self.check_moving_state()
+
+        self.p = self.longitude // DELTA_OMEGA
+        u = self.true_anomaly-(math.pi/2)
+        self.r = u//DELTA_PI if u >= 0 else (u+(math.pi/2))//DELTA_PI
 
     def check_moving_state(self):
         # 상승/하강 상태
@@ -124,12 +126,7 @@ class Satellite:
             else:
                 self.state = 'down'
                 self.sphere_attr.color = color.cyan
-        if self.sat_index == 0:
-            self.sphere_attr.color = color.black
-        if self.sat_index == 1:
-            self.sphere_attr.color = color.white
-        if self.sat_index == 2:
-            self.sphere_attr.color = color.green
+
 
     def check_link_state(self):
         global pat_available
@@ -142,21 +139,6 @@ class Satellite:
                     current_vec = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
                     before_vec = self.before_inter_sat_vec_arr[i]
                     angle_gap = calc_angle_between_vectors(current_vec, before_vec)
-                    # 3try
-                    # element = self.link_sat[i]
-                    # laser = self.laser_vec[i]
-                    # real_vec = np.array([element.x-self.x, element.y-self.y, element.z-self.z])
-                    # angle_gap = calc_angle_between_vectors(real_vec, laser)
-                    # 2try
-                    # angle_gap = fabs(new_angle_oab-before_angle_oab)
-                    # measure = np.linalg.norm(real_vector) * math.tan(angle_gap)
-                    # if measure > LASER_DISTANCE_THRESHOLD:
-                    # print(angle_gap)
-                    # 4try
-                    # cur_azimuth = get_azimuth(self, element)
-                    # angle_gap = abs(self.laser_azimuth[i] - cur_azimuth)
-                    # if max(0, angle_gap - TOLERABLE_ANGLE) > LASER_ANGLE_THRESHOLD:
-                    # print("angle gap:", angle_gap, "tolerable angle:", TOLERABLE_ANGLE)
                     if angle_gap > TOLERABLE_ANGLE:
                         self.change_link_state(i)
                         self.handover_timer[i] += HANDOVER_TIME
@@ -172,10 +154,7 @@ class Satellite:
                             pat_sat_array.append(self)
                         if self.id == "SAT-0-0":
                             write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD, get_euc_distance([self.x, self.y, self.z], [element.x, element.y, element.z]))
-                        # print("real:", real_vec, "laser:", laser, "gap:", angle_gap)
-                        # print("s1:", self.x, self.y, self.z)
-                        # print("s2_virtual:", self.x+laser[0], self.y+laser[1], self.z+laser[2])
-                        # print("s2_real:", element.x, element.y, element.z)
+
                     else:
                         # self.before_angle_oab_array[i] = new_angle_oab
                         self.new_link(i)
@@ -628,6 +607,11 @@ def deploy(inc, axis, color):
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     constellations.append(orbits)
     initialize_lisl(constellations[-1])
+    # for s in constellations[-1][-1].satellites:
+    #     print(s.id)
+    #     s.sphere_attr.color = vpython.color.black
+    #     s.link["left"].sphere_attr.color = vpython.color.green
+    #     s.link["right"].sphere_attr.color = vpython.color.red
 
 
 def deploy_starlink():
@@ -638,6 +622,11 @@ def deploy_starlink():
     orbitRot = math.radians(360 / orbitNum)
     satRot = math.radians(360 / satNum)
     deploy(inclination, altitude, CONST_COLORS[0])
+    # for o in constellations[0]:
+    #     s = o.satellites[0]
+    #     print(s.id, s.p, s.r, s.longitude, s.latitude, math.degrees(s.longitude), math.degrees(s.latitude))
+        # for s in o.satellites:
+        #     print(s.id, s.p, s.r)
 
 def routing_result_csv():
     write_routing_simulation_result(simulator.network.log, LASER_ANGLE_THRESHOLD)
