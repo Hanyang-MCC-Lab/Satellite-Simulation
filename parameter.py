@@ -3,17 +3,15 @@ import math
 
 from vpython import vpython
 
-from test import get_search_region
-
 ALGORITHM = "DTDR"
 # ALGORITHM = "DDR"
 # ALGORITHM = "OPSPF"
 # ALGORITHM = "TELSAT"
 TOLERABLE_ANGLE_PER_SECOND = 0.00057595865
-LASER_ANGLE_THRESHOLD = 0.0017# 25마이크로라디안
+LASER_ANGLE_THRESHOLD = 0.0017  # 25마이크로라디안
 LASER_DISTANCE_THRESHOLD = 1
 # ANGULAR_VELOCITY = 0.00057595865 + 0.001093099711 # 0.033도
-ANGULAR_VELOCITY = 0.001093099711 # 0.06263도
+ANGULAR_VELOCITY = 0.001093099711  # 0.06263도
 HANDOVER_TIME = 2000  # milli second
 PROTECT_TIME = 10000
 # second
@@ -22,6 +20,7 @@ PAT_DELAY = 4
 O_NUM = 72
 S_NUM = 22
 S_HEIGHT = 550
+CONST_EARTH_RADIUS = 6371  # 지구반경
 
 SEOUL_LAT, SEOUL_LON = 37.56, 126.97
 ROMA_LAT, ROMA_LON = 41.89, 12.49
@@ -59,7 +58,25 @@ GROUND_GEO_INFO = [
     (49.61042520586234, -80.4824690637281),
 ]
 G_MINIMUM_ELEVATION_ANGLE = 10
-G_SEARCH_REGION_RADIUS = get_search_region(G_MINIMUM_ELEVATION_ANGLE, S_HEIGHT, 6371)
+
+
+def calculate_beta(theta_deg, h, r_e):
+    # Convert degrees to radians
+    theta_rad = math.radians(theta_deg)
+    # Calculate gamma
+    gamma = math.asin(r_e * math.sin(theta_rad + (math.pi / 2)) / (h + r_e))
+    # Calculate beta
+    beta = (math.pi / 2) - theta_rad - gamma
+
+    return beta
+
+
+def get_search_region(minimum_angle, h, r_e):
+    beta = calculate_beta(minimum_angle, h, r_e)
+    return beta * r_e
+
+
+G_SEARCH_REGION_RADIUS = get_search_region(G_MINIMUM_ELEVATION_ANGLE, S_HEIGHT, CONST_EARTH_RADIUS)
 
 CITY_INFO = {'seoul': (SEOUL_LON, SEOUL_LAT),
              'roma': (ROMA_LON, ROMA_LAT),
@@ -70,15 +87,15 @@ CITY_INFO = {'seoul': (SEOUL_LON, SEOUL_LAT),
              'la': (LA_LON, LA_LAT)}
 
 real_rot_speed_per_second = 0.06263
-SLOT_DURATION = 100 # 1000 = 1s
-TOLERABLE_ANGLE = TOLERABLE_ANGLE_PER_SECOND * (SLOT_DURATION/1000)
-ANGULAR_VELOCITY_PER_SLOT = ANGULAR_VELOCITY * (SLOT_DURATION/1000)
-CONST_SAT_DT = real_rot_speed_per_second * (SLOT_DURATION/1000)  # 위성 공전 각도: 1초당 회전 각도, 하루 15.03회 공전
+SLOT_DURATION = 100  # 1000 = 1s
+TOLERABLE_ANGLE = TOLERABLE_ANGLE_PER_SECOND * (SLOT_DURATION / 1000)
+ANGULAR_VELOCITY_PER_SLOT = ANGULAR_VELOCITY * (SLOT_DURATION / 1000)
+CONST_SAT_DT = real_rot_speed_per_second * (SLOT_DURATION / 1000)  # 위성 공전 각도: 1초당 회전 각도, 하루 15.03회 공전
 
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
-PHASING_PARAMETER = 17# 17
+PHASING_PARAMETER = 17  # 17
 
-DELTA_OMEGA = (2*math.pi) / 72
-DELTA_PI = (2*math.pi) / 22
+DELTA_OMEGA = (2 * math.pi) / 72
+DELTA_PI = (2 * math.pi) / 22

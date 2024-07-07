@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 
-from parameter import ALGORITHM
+from parameter import ALGORITHM, CONST_EARTH_RADIUS
 
 
 def set_simulation_result(gamma):
@@ -98,3 +98,4 @@ def update_ECEF_using_lat_lon(lat, lon, alt):
     y = math.cos(lat) * math.sin(lon) * alt
     z = math.sin(lat) * alt
     return x, y, z
+

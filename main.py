@@ -3,7 +3,7 @@ import time
 import numpy as np
 import vpython
 
-from RTPG import minimum_hop_estimate
+from RTPG import *
 from laserISL import *
 from util import *
 
@@ -40,7 +40,7 @@ class Orbit:
         self.semi_major_axis = CONST_EARTH_RADIUS
         self.phasing_radian = math.radians(360*(PHASING_PARAMETER / (orbitNum*satNum)) * index)
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
-        self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.3,
+        self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.15,
                                axis=vec(-1 * math.sin(inclination) * math.cos(lon_of_ascending),
                                         math.cos(inclination),
                                         math.sin(lon_of_ascending) * math.sin(inclination)),
@@ -234,11 +234,31 @@ class Satellite:
 
 
 class GroundStation:
+    id = 0
     def __init__(self, geo_info):
+        self.id = GroundStation.id
+        GroundStation.id += 1
+
         self.latitude = math.radians(geo_info[0])
         self.longitude = math.radians(geo_info[1])
         self.x, self.y, self.z = update_ECEF_using_lat_lon(self.latitude, self.longitude, CONST_EARTH_RADIUS)
+        self.p_asc, self.r_asc, self.p_desc, self.r_desc = coordinates_of_ground_station(self.latitude, self.longitude, inclination)
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=80, color=color.white, up=vec(100, 100, 100))
+        self.delta_p, self.delta_r = grid_search_region(self.latitude, self.longitude, inclination)
+        self.name = f'GS|a{self.p_asc}-{self.r_asc}|d{self.p_desc}-{self.r_desc}'
+        self.connection_area = sphere(pos=vec(self.y, self.z, self.x), radius=G_SEARCH_REGION_RADIUS, color=color.green, up=vec(100, 100, 100), opacity=0.05)
+
+        self.routing_table = {}
+
+    def print_GS_info(self):
+        print("=========")
+        print("name:", self.name)
+        print("latitude:", math.degrees(self.latitude))
+        print("longitude:", math.degrees(self.longitude))
+        print("delta_p:", self.delta_p)
+        print("delta_r:", self.delta_r)
+        print("connection:", len(self.routing_table))
+
 
 class Packet:
     packet_count = 0
@@ -650,7 +670,7 @@ def routing_result_csv():
 orbitNum = 72
 satNum = 22
 maxDistance = 0
-CONST_EARTH_RADIUS = 6371  # 지구반경
+inclination = math.radians(float(53))
 orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
 # 궤도 및 위성 리스트 생성
@@ -684,6 +704,10 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 for g_info in GROUND_GEO_INFO:
     station = GroundStation(g_info)
     ground_stations.append(station)
+for g in ground_stations:
+    g.print_GS_info()
+print(G_SEARCH_REGION_RADIUS)
+
 # polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
 # polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
 # seam = ring(pos=vec(0,0,0), axis=vec(math.cos(math.radians(15)),0,math.sin(math.radians(15))), radius= CONST_EARTH_RADIUS+780, thickness = 50, color = color.magenta)

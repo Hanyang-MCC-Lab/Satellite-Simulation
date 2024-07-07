@@ -77,22 +77,7 @@ def reconstruct_path(parents, target):
 import math
 
 
-def calculate_beta_and_gamma(theta_deg, h, r_e):
-    # Convert degrees to radians
-    theta_rad = math.radians(theta_deg)
 
-    # Calculate gamma
-    gamma = math.asin(r_e * math.sin(theta_rad + (math.pi / 2)) / (h + r_e))
-
-    # Calculate beta
-    beta = (math.pi / 2) - theta_rad - gamma
-
-    return beta, gamma
-
-
-def get_search_region(minimum_angle, h, r_e):
-    beta, gamma = calculate_beta_and_gamma(minimum_angle, h, r_e)
-    return beta*gamma
 
 
 # Example values

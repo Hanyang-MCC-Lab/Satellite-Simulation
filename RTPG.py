@@ -1,6 +1,6 @@
 import math
 
-from parameter import DELTA_PI, DELTA_OMEGA, S_NUM, O_NUM, PHASING_PARAMETER
+from parameter import DELTA_PI, DELTA_OMEGA, S_NUM, O_NUM, PHASING_PARAMETER, G_SEARCH_REGION_RADIUS, CONST_EARTH_RADIUS
 
 
 def minimum_hop_estimate(src, dst):
@@ -48,5 +48,14 @@ def coordinates_of_ground_station(lat, lon, inc):
     r_asc = (capital_u_asc - pi/2)//DELTA_PI
     r_desc = (capital_u_desc - pi/2)//DELTA_PI
 
-    return (p_asc, r_asc), (p_desc, r_desc)
+    return p_asc, r_asc, p_desc, r_desc
 
+def grid_search_region(lat, lon, inc):
+    pi = math.pi
+
+    delta_p = 2*math.ceil((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*math.cos(lat)*DELTA_OMEGA))
+
+    h_min = inc - math.asin(math.sin(inc) * math.sin(pi / 2 - 2 * pi / S_NUM * (S_NUM - 1)))
+    delta_r = 2*math.ceil((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*h_min))
+
+    return delta_p, delta_r
