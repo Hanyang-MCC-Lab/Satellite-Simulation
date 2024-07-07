@@ -3,6 +3,7 @@ import time
 import numpy as np
 import vpython
 
+from RTPG import minimum_hop_estimate
 from laserISL import *
 from util import *
 
@@ -112,8 +113,8 @@ class Satellite:
         self.check_moving_state()
 
         self.p = self.longitude // DELTA_OMEGA
-        u = self.true_anomaly-(math.pi/2)
-        self.r = u//DELTA_PI if u >= 0 else (u+(math.pi/2))//DELTA_PI
+        u = self.true_anomaly if self.true_anomaly >= math.pi/2 else self.true_anomaly+(math.pi*2)
+        self.r = (u - math.pi/2)//DELTA_PI
 
     def check_moving_state(self):
         # 상승/하강 상태
@@ -625,8 +626,13 @@ def deploy_starlink():
     # for o in constellations[0]:
     #     s = o.satellites[0]
     #     print(s.id, s.p, s.r, s.longitude, s.latitude, math.degrees(s.longitude), math.degrees(s.latitude))
-        # for s in o.satellites:
-        #     print(s.id, s.p, s.r)
+    # for s in constellations[0][0].satellites:
+    #     print(s.id, s.p, s.r)
+    test_src, test_dst = constellations[-1][0].satellites[0], constellations[-1][5].satellites[3]
+    print(minimum_hop_estimate(test_src, test_dst))
+    test_src.sphere_attr.color = vpython.color.green
+    test_dst.sphere_attr.color = vpython.color.purple
+
 
 def routing_result_csv():
     write_routing_simulation_result(simulator.network.log, LASER_ANGLE_THRESHOLD)

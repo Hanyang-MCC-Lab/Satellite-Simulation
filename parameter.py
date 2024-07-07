@@ -16,6 +16,10 @@ PROTECT_TIME = 10000
 # second
 PAT_DELAY = 4
 
+O_NUM = 72
+S_NUM = 22
+S_HEIGHT = 550
+
 SEOUL_LAT, SEOUL_LON = 37.56, 126.97
 ROMA_LAT, ROMA_LON = 41.89, 12.49
 CAPETOWN_LAT, CAPETOWN_LON = -33.92, 18.42
@@ -43,7 +47,7 @@ CONST_SAT_DT = real_rot_speed_per_second * (SLOT_DURATION/1000)  # 위성 공전
 v = vpython.color()
 CONST_COLORS = [v.red, v.blue, v.green, v.white]
 
-PHASING_PARAMETER = 3# 17
+PHASING_PARAMETER = 17# 17
 
 DELTA_OMEGA = (2*math.pi) / 72
 DELTA_PI = (2*math.pi) / 22
