@@ -112,9 +112,9 @@ class Satellite:
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
         self.check_moving_state()
 
-        self.p = self.longitude // DELTA_OMEGA
+        self.p = self.orbit_index
         u = self.true_anomaly if self.true_anomaly >= math.pi/2 else self.true_anomaly+(math.pi*2)
-        self.r = (u - math.pi/2)//DELTA_PI
+        self.r = int((u - math.pi/2)//DELTA_PI)
 
     def check_moving_state(self):
         # 상승/하강 상태
@@ -232,6 +232,13 @@ class Satellite:
 
         return get_distance_with_lon_and_lat(lon_node_A, lat_node_A, lon_node_B, lat_node_B)
 
+
+class GroundStation:
+    def __init__(self, geo_info):
+        self.latitude = math.radians(geo_info[0])
+        self.longitude = math.radians(geo_info[1])
+        self.x, self.y, self.z = update_ECEF_using_lat_lon(self.latitude, self.longitude, CONST_EARTH_RADIUS)
+        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=80, color=color.white, up=vec(100, 100, 100))
 
 class Packet:
     packet_count = 0
@@ -626,12 +633,14 @@ def deploy_starlink():
     # for o in constellations[0]:
     #     s = o.satellites[0]
     #     print(s.id, s.p, s.r, s.longitude, s.latitude, math.degrees(s.longitude), math.degrees(s.latitude))
-    # for s in constellations[0][0].satellites:
-    #     print(s.id, s.p, s.r)
-    test_src, test_dst = constellations[-1][0].satellites[0], constellations[-1][5].satellites[3]
+    for s in constellations[0][0].satellites:
+        print(s.id, s.p, s.r)
+
+    print("=======================")
+    test_src, test_dst = constellations[-1][0].satellites[0], constellations[-1][3].satellites[3]
     print(minimum_hop_estimate(test_src, test_dst))
     test_src.sphere_attr.color = vpython.color.green
-    test_dst.sphere_attr.color = vpython.color.purple
+    test_dst.sphere_attr.color = vpython.color.red
 
 
 def routing_result_csv():
@@ -649,6 +658,7 @@ constellations = []
 pat_sat_array = []
 protect_sat_array = []
 routing_table = []
+ground_stations = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
 M_size = pyautogui.size()
@@ -671,6 +681,9 @@ scene.resizable = False
 # vernal_equinox = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
 #           color=color.cyan, billboard=True, emissive=True, depth=0.15)
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
+for g_info in GROUND_GEO_INFO:
+    station = GroundStation(g_info)
+    ground_stations.append(station)
 # polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
 # polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
 # seam = ring(pos=vec(0,0,0), axis=vec(math.cos(math.radians(15)),0,math.sin(math.radians(15))), radius= CONST_EARTH_RADIUS+780, thickness = 50, color = color.magenta)

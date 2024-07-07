@@ -90,12 +90,17 @@ def calculate_beta_and_gamma(theta_deg, h, r_e):
     return beta, gamma
 
 
-# Example values
-theta = 25  # in degrees
-h = 550  # in km (altitude of the satellite)
-r_e = 6371  # in km (radius of the Earth)
+def get_search_region(minimum_angle, h, r_e):
+    beta, gamma = calculate_beta_and_gamma(minimum_angle, h, r_e)
+    return beta*gamma
 
-beta, gamma = calculate_beta_and_gamma(theta, h, r_e)
-print("Gamma:", gamma)
-print("Beta:", beta)
-print("R_s:", beta*r_e)
+
+# Example values
+# theta = 25  # in degrees
+# h = 550  # in km (altitude of the satellite)
+# r_e = 6371  # in km (radius of the Earth)
+
+# beta, gamma = calculate_beta_and_gamma(theta, h, r_e)
+# print("Gamma:", gamma)
+# print("Beta:", beta)
+# print("R_s:", beta*r_e)

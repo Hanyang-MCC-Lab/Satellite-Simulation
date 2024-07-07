@@ -92,3 +92,9 @@ def update_ECEF(inc, true_anomaly, ascending_node, alt):
     # new_y = math.cos(lat) * math.sin(lon) * alt
     # new_z = math.sin(lat) * alt
     # return new_x, new_y, new_z
+
+def update_ECEF_using_lat_lon(lat, lon, alt):
+    x = math.cos(lat) * math.cos(lon) * alt
+    y = math.cos(lat) * math.sin(lon) * alt
+    z = math.sin(lat) * alt
+    return x, y, z
