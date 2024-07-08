@@ -3,6 +3,7 @@ import time
 import numpy as np
 import vpython
 
+from KNBG import connect_sat_ground
 from RTPG import *
 from laserISL import *
 from util import *
@@ -245,8 +246,10 @@ class GroundStation:
         self.p_asc, self.r_asc, self.p_desc, self.r_desc = coordinates_of_ground_station(self.latitude, self.longitude, inclination)
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=80, color=color.white, up=vec(100, 100, 100))
         self.delta_p, self.delta_r = grid_search_region(self.latitude, self.longitude, inclination)
+        self.search_range_asc, self.search_range_desc = self.update_search_range()
         self.name = f'GS|a{self.p_asc}-{self.r_asc}|d{self.p_desc}-{self.r_desc}'
-        self.connection_area = sphere(pos=vec(self.y, self.z, self.x), radius=G_SEARCH_REGION_RADIUS, color=color.green, up=vec(100, 100, 100), opacity=0.05)
+        self.connection_area = sphere(pos=vec(self.y, self.z, self.x), radius=G_SEARCH_REGION_RADIUS, color=color.green, up=vec(100, 100, 100), opacity=0.08)
+        self.connections = []
 
         self.routing_table = {}
 
@@ -255,9 +258,57 @@ class GroundStation:
         print("name:", self.name)
         print("latitude:", math.degrees(self.latitude))
         print("longitude:", math.degrees(self.longitude))
+        print("p and r (asc):", self.p_asc, self.r_asc)
+        print("p and r (desc):", self.p_desc, self.r_desc)
         print("delta_p:", self.delta_p)
         print("delta_r:", self.delta_r)
-        print("connection:", len(self.routing_table))
+        print("connection:", len(self.connections))
+
+    def connect_satellites(self, constellation):
+        # print("ground_station:", self.name)
+        [horizontal_range_asc, vertical_range_asc] = self.search_range_asc
+        [horizontal_range_desc, vertical_range_desc] = self.search_range_desc
+        for p in (horizontal_range_asc+horizontal_range_desc):
+            for sat in constellation[p].satellites:
+                radius = calculate_distance_s_to_g(self.latitude, self.longitude, sat.latitude, sat.longitude)
+                # print(elevation)
+                if radius <= G_SEARCH_REGION_RADIUS:
+                    print(radius)
+                    if self not in sat.link["ground"]:
+                        sat.link["ground"].append(self)
+                    if sat not in self.connections:
+                        self.connections.append(sat)
+                    sat.sphere_attr.radius = 70
+                    sat.sphere_attr.color = color.red
+
+
+
+    def update_search_range(self):
+        search_area_asc, search_area_desc = [], []
+        area_left_bound_asc, area_left_bound_desc = int((self.p_asc - self.delta_p/2 + O_NUM) % O_NUM), int((self.p_desc - self.delta_p/2 + O_NUM) % O_NUM)
+        area_right_bound_asc, area_right_bound_desc = int((self.p_asc + self.delta_p/2) % O_NUM), int((self.p_desc + self.delta_p/2) % O_NUM)
+        area_upper_bound_asc, area_upper_bound_desc = int((self.r_asc + self.delta_r/2) % S_NUM), int((self.r_desc + self.delta_r/2) % S_NUM)
+        area_lower_bound_asc, area_lower_bound_desc = int((self.r_asc - self.delta_r/2 + S_NUM) % S_NUM), int((self.r_desc - self.delta_r/2 + S_NUM) % S_NUM)
+
+        if area_left_bound_asc < area_right_bound_asc:
+            search_area_asc.append(list(range(area_left_bound_asc, area_right_bound_asc+1)))
+        else:
+            search_area_asc.append(list(range(area_left_bound_asc, O_NUM))+list(range(0, area_right_bound_asc+1)))
+        if area_left_bound_desc < area_right_bound_desc:
+            search_area_desc.append(list(range(area_left_bound_desc, area_right_bound_desc+1)))
+        else:
+            search_area_desc.append(list(range(area_right_bound_desc, O_NUM))+list(range(0, area_right_bound_desc+1)))
+
+        if area_upper_bound_asc > area_lower_bound_asc:
+            search_area_asc.append(list(range(area_lower_bound_asc, area_upper_bound_asc+1)))
+        else:
+            search_area_asc.append(list(range(area_upper_bound_asc, S_NUM))+list(range(0, area_lower_bound_asc+1)))
+        if area_upper_bound_desc > area_lower_bound_desc:
+            search_area_desc.append(list(range(area_lower_bound_desc, area_upper_bound_desc+1)))
+        else:
+            search_area_desc.append(list(range(area_upper_bound_desc, S_NUM))+list(range(0, area_lower_bound_desc+1)))
+
+        return search_area_asc, search_area_desc
 
 
 class Packet:
@@ -635,11 +686,19 @@ def deploy(inc, axis, color):
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
     constellations.append(orbits)
     initialize_lisl(constellations[-1])
+    connect_sat_ground(constellations[-1], ground_stations)
     # for s in constellations[-1][-1].satellites:
     #     print(s.id)
     #     s.sphere_attr.color = vpython.color.black
     #     s.link["left"].sphere_attr.color = vpython.color.green
     #     s.link["right"].sphere_attr.color = vpython.color.red
+
+    for g in ground_stations:
+        g.connect_satellites(constellations[-1])
+    # ground_stations[0].connect_satellites(constellations[-1])
+    # ground_stations[0].print_GS_info()
+
+
 
 
 def deploy_starlink():
@@ -653,14 +712,14 @@ def deploy_starlink():
     # for o in constellations[0]:
     #     s = o.satellites[0]
     #     print(s.id, s.p, s.r, s.longitude, s.latitude, math.degrees(s.longitude), math.degrees(s.latitude))
-    for s in constellations[0][0].satellites:
-        print(s.id, s.p, s.r)
 
     print("=======================")
     test_src, test_dst = constellations[-1][0].satellites[0], constellations[-1][3].satellites[3]
     print(minimum_hop_estimate(test_src, test_dst))
     test_src.sphere_attr.color = vpython.color.green
     test_dst.sphere_attr.color = vpython.color.red
+    # for g in ground_stations:
+    #     g.print_GS_info()
 
 
 def routing_result_csv():
@@ -704,9 +763,9 @@ earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.ear
 for g_info in GROUND_GEO_INFO:
     station = GroundStation(g_info)
     ground_stations.append(station)
-for g in ground_stations:
-    g.print_GS_info()
-print(G_SEARCH_REGION_RADIUS)
+# for g in ground_stations:
+#     g.print_GS_info()
+# print(G_SEARCH_REGION_RADIUS)
 
 # polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
 # polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)

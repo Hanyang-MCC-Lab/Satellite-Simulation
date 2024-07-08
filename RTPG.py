@@ -39,23 +39,23 @@ def coordinates_of_ground_station(lat, lon, inc):
     virtual_long_asc = (lon - ksi_asc + 2*pi) % (2*pi)
     virtual_long_desc = (lon - ksi_desc + 2*pi) % (2*pi)
 
-    p_asc = virtual_long_asc//DELTA_OMEGA
-    p_desc = virtual_long_desc//DELTA_OMEGA
+    p_asc = (round(virtual_long_asc//DELTA_OMEGA)+1) % O_NUM
+    p_desc = (round(virtual_long_desc//DELTA_OMEGA)+1) % O_NUM
 
-    capital_u_asc = u_ascending if u_descending >= pi/2 else u_descending + 2*pi
+    capital_u_asc = u_ascending if u_ascending >= pi/2 else u_ascending + 2*pi
     capital_u_desc = u_descending if u_descending >= pi/2 else u_descending + 2*pi
 
-    r_asc = (capital_u_asc - pi/2)//DELTA_PI
-    r_desc = (capital_u_desc - pi/2)//DELTA_PI
+    r_asc = (round((capital_u_asc - pi/2)/DELTA_PI)-1+S_NUM) % S_NUM
+    r_desc = (round((capital_u_desc - pi/2)/DELTA_PI)-1+S_NUM) % S_NUM
 
-    return p_asc, r_asc, p_desc, r_desc
+    return int(p_asc), int(r_asc), int(p_desc), int(r_desc)
 
 def grid_search_region(lat, lon, inc):
     pi = math.pi
 
-    delta_p = 2*math.ceil((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*math.cos(lat)*DELTA_OMEGA))
+    delta_p = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*math.cos(lat)*DELTA_OMEGA))
 
     h_min = inc - math.asin(math.sin(inc) * math.sin(pi / 2 - 2 * pi / S_NUM * (S_NUM - 1)))
-    delta_r = 2*math.ceil((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*h_min))
+    delta_r = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*h_min))
 
     return delta_p, delta_r
