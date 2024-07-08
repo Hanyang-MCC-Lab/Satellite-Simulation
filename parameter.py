@@ -99,3 +99,5 @@ PHASING_PARAMETER = 17  # 17
 
 DELTA_OMEGA = (2 * math.pi) / 72
 DELTA_PI = (2 * math.pi) / 22
+
+EXTRA_P = 4

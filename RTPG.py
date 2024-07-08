@@ -1,6 +1,26 @@
 import math
 
-from parameter import DELTA_PI, DELTA_OMEGA, S_NUM, O_NUM, PHASING_PARAMETER, G_SEARCH_REGION_RADIUS, CONST_EARTH_RADIUS
+from parameter import DELTA_PI, DELTA_OMEGA, S_NUM, O_NUM, PHASING_PARAMETER, G_SEARCH_REGION_RADIUS, CONST_EARTH_RADIUS, EXTRA_P
+
+class RTPG:
+    def __init__(self):
+        self.graph = []
+
+    def append_orbit(self, orbit):
+        new_orbit = []
+        s_num = len(orbit)
+        start_index = 0
+        for i in range(s_num):
+            if orbit[i].r == 0:
+                start_index = i
+                break
+        cur_index, done = start_index, False
+        while not done:
+            new_orbit.append(orbit[cur_index])
+            cur_index = (cur_index+1) % s_num
+            if cur_index == start_index:
+                done = True
+
 
 
 def minimum_hop_estimate(src, dst):
@@ -53,7 +73,7 @@ def coordinates_of_ground_station(lat, lon, inc):
 def grid_search_region(lat, lon, inc):
     pi = math.pi
 
-    delta_p = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*math.cos(lat)*DELTA_OMEGA))
+    delta_p = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*math.cos(lat)*DELTA_OMEGA)+EXTRA_P)
 
     h_min = inc - math.asin(math.sin(inc) * math.sin(pi / 2 - 2 * pi / S_NUM * (S_NUM - 1)))
     delta_r = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*h_min))

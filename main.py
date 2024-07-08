@@ -273,7 +273,7 @@ class GroundStation:
                 radius = calculate_distance_s_to_g(self.latitude, self.longitude, sat.latitude, sat.longitude)
                 # print(elevation)
                 if radius <= G_SEARCH_REGION_RADIUS:
-                    print(radius)
+                    # print(radius)
                     if self not in sat.link["ground"]:
                         sat.link["ground"].append(self)
                     if sat not in self.connections:
@@ -331,10 +331,11 @@ class Packet:
         if ALGORITHM == "OPSF" or ALGORITHM == "OPSPF":
             region, s_sat, s_orbit, dst_sat, dst_orbit = constellation_to_array(constellations[0], self.src, self.dst)
         else:
-            minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,satNum, constellations[0])
+            # minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,satNum, constellations[0])
+            mhr, s_sat, s_orbit, dst_sat, dst_orbit = new_mhr(self.src, self.dst, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
         # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        self.path, self.fail_info, self.overhead_signal = dtdr(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        self.path, self.fail_info, self.overhead_signal = dtdr(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
         # self.path, self.fail_info, routing_table, self.overhead_signal = opspf(region, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
 
 
@@ -681,17 +682,19 @@ def deploy(inc, axis, color):
     if int(math.degrees(inc)) >= 89:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, (orbitRot * i) / 2, color))
+            rtpg.append_orbit(orbits[-1].satellites)
     else:
         for i in range(orbitNum):  # 궤도생성
             orbits.append(Orbit(i, inc, axis, orbitRot * i, color))
+            rtpg.append_orbit(orbits[-1].satellites)
     constellations.append(orbits)
     initialize_lisl(constellations[-1])
     connect_sat_ground(constellations[-1], ground_stations)
-    # for s in constellations[-1][-1].satellites:
-    #     print(s.id)
-    #     s.sphere_attr.color = vpython.color.black
-    #     s.link["left"].sphere_attr.color = vpython.color.green
-    #     s.link["right"].sphere_attr.color = vpython.color.red
+    for s in constellations[-1][-1].satellites:
+        print(s.id)
+        s.sphere_attr.color = vpython.color.black
+        s.link["left"].sphere_attr.color = vpython.color.green
+        s.link["right"].sphere_attr.color = vpython.color.red
 
     for g in ground_stations:
         g.connect_satellites(constellations[-1])
@@ -713,11 +716,11 @@ def deploy_starlink():
     #     s = o.satellites[0]
     #     print(s.id, s.p, s.r, s.longitude, s.latitude, math.degrees(s.longitude), math.degrees(s.latitude))
 
-    print("=======================")
-    test_src, test_dst = constellations[-1][0].satellites[0], constellations[-1][3].satellites[3]
-    print(minimum_hop_estimate(test_src, test_dst))
-    test_src.sphere_attr.color = vpython.color.green
-    test_dst.sphere_attr.color = vpython.color.red
+    # print("=======================")
+    # test_src, test_dst = constellations[-1][0].satellites[0], constellations[-1][3].satellites[3]
+    # print(minimum_hop_estimate(test_src, test_dst))
+    # test_src.sphere_attr.color = vpython.color.green
+    # test_dst.sphere_attr.color = vpython.color.red
     # for g in ground_stations:
     #     g.print_GS_info()
 
@@ -804,6 +807,7 @@ button(text="extract to csv", bind=routing_result_csv)
 time = 0
 orbit_cnt = 0
 simulator = RoutingSimulator()
+rtpg = RTPG()
 menu_choice = 0
 veta_results = []
 pat_available = True

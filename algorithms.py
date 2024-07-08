@@ -1,7 +1,7 @@
 import math
 import random
 from time import sleep
-
+from RTPG import minimum_hop_estimate
 from vpython import vec, color
 
 
@@ -67,7 +67,75 @@ def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, cons
         mhr.append(temp)
 
     return mhr, src_sat, src_orbit, dest_sat, dest_orbit
+def new_mhr(source, destination, constellation):
+    horizontal, vertical = minimum_hop_estimate(source, destination)
+    src_sat, src_orbit, dest_sat, dest_orbit = 0, 0, 0, 0
+    mhr = []
+    if horizontal >= 0:
+        if vertical >= 0: # 우상향
+            cur = source
+            print(cur.link)
+            for i in range(vertical+1):
+                row = []
+                point = cur
+                for j in range(horizontal+1):
+                    row.append(cur)
+                    cur = cur.link["right"]
+                mhr.insert(0, row)
+                cur = point.link["up"]
+            src_sat, src_orbit = vertical, 0
+            dest_sat, dest_orbit = 0, horizontal
 
+        elif vertical < 0: # 우하향
+            cur = source
+            for i in range(abs(vertical)+1):
+                row = []
+                point = cur
+                for j in range(horizontal+1):
+                    row.append(cur)
+                    cur = cur.link["right"]
+                mhr.append(row)
+                cur = point.link["down"]
+            src_sat, src_orbit = 0, 0
+            dest_sat, dest_orbit = abs(vertical), horizontal
+    else:
+        if vertical >= 0: # 좌상향
+            cur = source
+            for i in range(vertical+1):
+                row = []
+                point = cur
+                for j in range(abs(horizontal)+1):
+                    row.append(cur)
+                    cur = cur.link["left"]
+                mhr.insert(0, row)
+                cur = point.link["up"]
+            src_sat, src_orbit = vertical, abs(horizontal)
+            dest_sat, dest_orbit = 0, 0
+
+        elif vertical < 0: # 좌하향
+            cur = source
+            for i in range(abs(vertical)+1):
+                row = []
+                point = cur
+                for j in range(abs(horizontal)+1):
+                    row.append(cur)
+                    cur = cur.link["left"]
+                mhr.append(row)
+                cur = point.link["down"]
+            src_sat, src_orbit = 0, abs(horizontal)
+            dest_sat, dest_orbit = abs(vertical), 0
+
+    # print(orbit_range)
+    # print(sat_range)
+    print("===MHR===")
+    for i in mhr:
+        for j in i:
+            print(j.id, end=" ")
+        print()
+    print("src: ", src_orbit, src_sat)
+    print("dst: ", dest_orbit, dest_sat)
+
+    return mhr, src_sat, src_orbit, dest_sat, dest_orbit
 
 def extend_mhr(constellation, mhr, direction):
     mhr_extended = []
