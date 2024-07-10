@@ -2,6 +2,7 @@
 import time
 import numpy as np
 import vpython
+from tqdm import tqdm
 
 from KNBG import connect_sat_ground
 from RTPG import *
@@ -77,7 +78,6 @@ class Satellite:
     handover_timer = [0, 0]
     had_pat = [False, False]
     protect_timer = [0, 0]
-    link_sat = []
     failed_state = False
     detourTable = {}
     direction = None
@@ -87,6 +87,7 @@ class Satellite:
         self.link_state = [1, 1]
         self.handover_timer = [0, 0]
         self.before_angle_oab_array = []
+        self.link_sat = []
         self.fail_experiences = {0: [], 1: []}
         # laser inter satellite link
         self.link = {"up": None, "down": None, "left": None, "right": None, "ground": []}
@@ -128,6 +129,12 @@ class Satellite:
             else:
                 self.state = 'down'
                 self.sphere_attr.color = color.cyan
+        if len(self.link["ground"]) > 0:
+            self.sphere_attr.color = color.purple
+            self.sphere_attr.radius = 70
+        else:
+            self.sphere_attr.radius = 40
+
 
 
     def check_link_state(self):
@@ -135,6 +142,7 @@ class Satellite:
         global routing_table
         if pat_available:
             for i in range(len(self.link_sat)):
+                # print(i, self.link_sat, self.had_pat, self.link_state)
                 if (not self.had_pat[i]) and self.link_state[i] == 1:
                     # if self.protect_timer[i] == 0 and self.link_state[i] == 1:
                     element = self.link_sat[i]
@@ -205,9 +213,10 @@ class Satellite:
         self.longitude += delta_longitude
         self.longitude = self.longitude % (2 * np.pi)
         is_passing_zero *= self.latitude
-        if is_passing_zero < 0:
-            # print("pass 0 latitude", "delta_alt:", delta_latitude)
-            self.had_pat = [False, False]
+
+        u = self.true_anomaly if self.true_anomaly >= math.pi/2 else self.true_anomaly+(math.pi*2)
+        self.r = int((u - math.pi/2)//DELTA_PI)
+
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.orbit.inclination, self.true_anomaly, self.orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
         # self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
@@ -278,9 +287,15 @@ class GroundStation:
                         sat.link["ground"].append(self)
                     if sat not in self.connections:
                         self.connections.append(sat)
-                    sat.sphere_attr.radius = 70
-                    sat.sphere_attr.color = color.red
+                    # ground station link attr
+                    # sat.sphere_attr.radius = 70
+                    # sat.sphere_attr.color = color.red
 
+    def reset_connections(self):
+        for sat in self.connections:
+            sat.link["ground"].remove(self)
+
+        self.connections = []
 
 
     def update_search_range(self):
@@ -329,12 +344,12 @@ class Packet:
         global routing_table
         # 최적 위성 탐색
         if ALGORITHM == "OPSF" or ALGORITHM == "OPSPF":
-            region, s_sat, s_orbit, dst_sat, dst_orbit = constellation_to_array(constellations[0], self.src, self.dst)
+            region, s_sat, s_orbit, dst_sat, dst_orbit = constellation_to_array(rtpg.graph), self.src.r, self.src.p, self.dst.r, self.dst.p
         else:
             # minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,satNum, constellations[0])
             mhr, s_sat, s_orbit, dst_sat, dst_orbit = new_mhr(self.src, self.dst, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
-        # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
         self.path, self.fail_info, self.overhead_signal = dtdr(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
         # self.path, self.fail_info, routing_table, self.overhead_signal = opspf(region, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
 
@@ -689,13 +704,11 @@ def deploy(inc, axis, color):
             rtpg.append_orbit(orbits[-1].satellites)
     constellations.append(orbits)
     initialize_lisl(constellations[-1])
-    connect_sat_ground(constellations[-1], ground_stations)
-    for s in constellations[-1][-1].satellites:
-        print(s.id)
-        s.sphere_attr.color = vpython.color.black
-        s.link["left"].sphere_attr.color = vpython.color.green
-        s.link["right"].sphere_attr.color = vpython.color.red
-
+    # for s in constellations[-1][-1].satellites:
+    #     print(s.id, s.link_sat[0].id, s.link_sat[1].id)
+    #     s.sphere_attr.color = vpython.color.black
+    #     s.link["left"].sphere_attr.color = vpython.color.green
+    #     s.link["right"].sphere_attr.color = vpython.color.red
     for g in ground_stations:
         g.connect_satellites(constellations[-1])
     # ground_stations[0].connect_satellites(constellations[-1])
@@ -726,7 +739,7 @@ def deploy_starlink():
 
 
 def routing_result_csv():
-    write_routing_simulation_result(simulator.network.log, LASER_ANGLE_THRESHOLD)
+    write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
 
 # 클래스 끝, 메인 로직 시작
 orbitNum = 72
@@ -817,8 +830,8 @@ pat_available = True
 # losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
 #                        math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
 #                        math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
-set_simulation_result(LASER_ANGLE_THRESHOLD)
-set_routing_simulation_result(LASER_ANGLE_THRESHOLD)
+set_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
+set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
 while 1:
 
     while setting == False:
@@ -839,122 +852,53 @@ while 1:
         # print("Running")
 
         # 타이머 & 핸드오버
-        for sat in pat_sat_array:
-            for index in range(len(sat.handover_timer)):
-                if sat.handover_timer[index] > 0:
-                    sat.handover_timer[index] -= SLOT_DURATION
-                    if sat.handover_timer[index] <= 0:
-                        sat.handover_timer[index] = 0
-                        sat.change_link_state(index)
-                        sat.new_link(index)
-                        if ALGORITHM != "OPSPF" and ALGORITHM != "OPSF":
-                            for fail_experience in sat.fail_experiences[index]:
-                                recovery_flood(sat, index)
+        for t in tqdm(range(0, SIMULATION_TIME+1, SLOT_DURATION)):
+            time = t
+            for sat in pat_sat_array:
+                for index in range(len(sat.handover_timer)):
+                    if sat.handover_timer[index] > 0:
+                        sat.handover_timer[index] -= SLOT_DURATION
+                        if sat.handover_timer[index] <= 0:
+                            sat.handover_timer[index] = 0
+                            sat.change_link_state(index)
+                            sat.new_link(index)
+                            if ALGORITHM != "OPSPF" and ALGORITHM != "OPSF":
+                                for fail_experience in sat.fail_experiences[index]:
+                                    recovery_flood(sat, index)
 
-                        # sat.protect_timer[index] += PROTECT_TIME
-                        # if sat not in protect_sat_array:
-                        #     protect_sat_array.append(sat)
-                        # print(sat.handover_timer)
-            if 0 not in sat.link_state:
-                if sat.id in routing_table:
-                    routing_table.remove(sat.id)
-                pat_sat_array.remove(sat)
+                            # sat.protect_timer[index] += PROTECT_TIME
+                            # if sat not in protect_sat_array:
+                            #     protect_sat_array.append(sat)
+                            # print(sat.handover_timer)
+                if 0 not in sat.link_state:
+                    if sat.id in routing_table:
+                        routing_table.remove(sat.id)
+                    pat_sat_array.remove(sat)
 
-        # for sat in protect_sat_array:
-        #     for index in range(len(sat.protect_timer)):
-        #         if sat.protect_timer[index] > 0:
-        #             # print("before:", sat.protect_timer)
-        #             sat.protect_timer[index] -= SLOT_DURATION
-        #             # print("after:", sat.protect_timer)
-        #             if sat.protect_timer[index] <= 0:
-        #                 sat.protect_timer[index] = 0
-        #     if sum(sat.protect_timer) == 0:
-        #         protect_sat_array.remove(sat)
-        if time % 1000 == 0:
-            simulator.random_N_to_M_simulation(5)
-            # print(len(simulator.network.log))
-        time += SLOT_DURATION
-        # sleep(0.2)
-        if time % 5000 == 0:
-            print("time:", time // 1000, "seconds")
+            # sleep(0.2)
+            # 공전
+            for orbits in constellations:
+                for orbit in orbits:
+                    for sat in orbit.satellites:
+                        sat.refresh(CONST_SAT_DT)
 
-        # 공전
-        for orbits in constellations:
-            for orbit in orbits:
-                for sat in orbit.satellites:
-                    sat.refresh(CONST_SAT_DT)
+            # 링크 확인
+            for orbits in constellations:
+                for orbit in orbits:
+                    for sat in orbit.satellites:
+                        sat.check_link_state()
 
-        # 링크 확인
-        for orbits in constellations:
-            for orbit in orbits:
-                for sat in orbit.satellites:
-                    sat.check_link_state()
+            if time % 600 == 0:
+                rtpg.refresh_rtpg()
+                for g in ground_stations:
+                    g.reset_connections()
+                    g.connect_satellites(constellations[0])
+            if time % 100 == 0:
+                simulator.random_N_to_M_simulation(50)
+                # print(len(simulator.network.log))
 
-        # for i in range(len(simulator.network.log)):
-        #     path = simulator.network.log[i]["path"]
-        #     if simupyhlator.network.log[i]["packet"] in veta_results:
-        #         first_sat_llh = path[0].get_llh_info()
-        #         last_sat_llh = path[-1].get_llh_info()
-        #         print(first_sat_llh)
-        #         print(last_sat_llh)
-        #         seoul_to_first_sat = get_distance_with_lon_and_lat(SEOUL_LON, SEOUL_LAT,
-        #                                                            first_sat_llh["lon"], first_sat_llh["lat"])
-        #         la_to_last_sat = get_distance_with_lon_and_lat(LA_LON, LA_LAT,
-        #                                                        last_sat_llh["lon"], last_sat_llh["lat"])
-        #                                                        last_sat_llh["lon"], last_sat_llh["lat"])
-        #         print(seoul_to_first_sat, la_to_last_sat)
-        #         # if seoul_to_first_sat > maxDistance or la_to_last_sat > maxDistance:
-        #         if get_nearest_sat(SEOUL_LON, SEOUL_LAT, constellations) != path[0] or get_nearest_sat(LA_LON, LA_LAT, constellations) != path[-1]:
-        #             simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-        #             veta_results.remove(simulator.network.log[i]["packet"])
-        #             if menu_choice == i:
-        #                 simulator.reset_GUI()
-        #             simulator.network.log[i] = simulator.network.log[-1]
-        #             simulator.network.log.pop()
-        #             print(veta_results)
-        #             print(veta_results)
-        #             if menu_choice == i:
-        #                 simulator.show_result_to_GUI(i)
-        #             # simulator.network.log.pop()
-        #             break
-        #         else:
-        #             before = path[0]
-        #             # for current in path[1:]:
-        #             #     # if current.get_great_distance(before) > maxDistance:
-        #             #         print("punk!(", current.get_great_distance(before),")")
-        #             #         print("before:", before.id, "current:", current.id)
-        #             #         simulator.ground_to_ground_simulation(SEOUL_LON, SEOUL_LAT, LA_LON, LA_LAT)
-        #             #         veta_results.remove(simulator.network.log[i]["packet"])
-        #             #         if menu_choice == i:
-        #             #             simulator.reset_GUI()
-        #             #         simulator.network.log[i] = simulator.network.log[-1]
-        #             #         simulator.network.log.pop()
-        #             #         print(veta_results)
-        #             #         print(veta_results)
-        #             #         if menu_choice == i:
-        #             #             simulator.show_result_to_GUI(i)
-        #             #         # simulator.network.log.pop()
-        #             #         break
-        #             #     before = current
-        #     else:
-        #         before = path[0]
-        #         # for current in path[1:]:
-        #         #     if current.get_great_distance(before) > maxDistance:
-        #         #         simulator.network.routing(path[0], path[-1])
-        #         #         if menu_choice == i:
-        #         #             simulator.reset_GUI()
-        #         #         simulator.network.log[i] = simulator.network.log[-1]
-        #         #         simulator.network.log.pop()
-        #         #         new_list = ["None"]
-        #         #         for j in simulator.network.log:
-        #         #             new_list.append(j["packet"] + " (delay: " + str(j["delay"]) + ")")
-        #         #         routing_list_menu.choices = new_list
-        #         #         if menu_choice == i:
-        #         #             simulator.show_result_to_GUI(i)
-        #         #         break
-        #         #     before = current
-        if time == 200000:
-            running = True
-        if running == True:
-            write_routing_simulation_result(simulator.network.log, LASER_ANGLE_THRESHOLD)
-            break
+        running = True
+        write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
+        # if running == True:
+        #     break
+

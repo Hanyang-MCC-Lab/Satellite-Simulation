@@ -5,6 +5,8 @@ from parameter import DELTA_PI, DELTA_OMEGA, S_NUM, O_NUM, PHASING_PARAMETER, G_
 class RTPG:
     def __init__(self):
         self.graph = []
+        #only for 'refresh'
+        self.new_graph = []
 
     def append_orbit(self, orbit):
         new_orbit = []
@@ -20,17 +22,30 @@ class RTPG:
             cur_index = (cur_index+1) % s_num
             if cur_index == start_index:
                 done = True
+        self.graph.append(new_orbit)
 
+    def refresh_rtpg(self):
+        for orbit_i in range(O_NUM):
+            for sat_i in range(S_NUM):
+                if self.graph[orbit_i][sat_i].r == sat_i:
+                    continue
+                else:
+                    self.graph[orbit_i] = shift_array(self.graph[orbit_i])
+
+
+
+def shift_array(arr):
+    return [arr[-1]]+arr[:-1]
 
 
 def minimum_hop_estimate(src, dst):
     pi = math.pi
     p_s, p_d, r_s, r_d = src.p, dst.p, src.r, dst.r
-    print("src:", p_s, r_s)
-    print("dst:", p_d, r_d)
+    # print("src:", p_s, r_s)
+    # print("dst:", p_d, r_d)
 
     left, right = (p_s-p_d+O_NUM) % O_NUM, (p_d-p_s+O_NUM) % O_NUM
-    print(left, right)
+    # print(left, right)
     if left < right:
         horizontal = -1*left
     else:
@@ -38,9 +53,9 @@ def minimum_hop_estimate(src, dst):
     sum_of_delta_f = math.radians((360*(PHASING_PARAMETER / (S_NUM*O_NUM))) * horizontal)
     u_after_horizontal_move = src.true_anomaly+sum_of_delta_f if src.true_anomaly+sum_of_delta_f >= pi/2 else src.true_anomaly+sum_of_delta_f+(pi*2)
     r_after_horizontal_move = int((u_after_horizontal_move - pi/2)//DELTA_PI)
-    print(r_after_horizontal_move)
+    # print(r_after_horizontal_move)
     up, down = ((r_d-r_after_horizontal_move)+S_NUM) % S_NUM, ((r_after_horizontal_move-r_d)+S_NUM) % S_NUM
-    print(up, down)
+    # print(up, down)
     if up <= down:
         vertical = up
     else:

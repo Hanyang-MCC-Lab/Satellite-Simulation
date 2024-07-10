@@ -17,7 +17,7 @@ def set_simulation_result(gamma):
     wr = csv.writer(f)
     title = []
     title.append('S1_id')
-    title.append('S1_lat')
+    title.append('phase')
     title.append('S1_lon')
     title.append('S1_alt')
     title.append('S2_id')
@@ -36,7 +36,7 @@ def clear_simulation_result(gamma):
         wr = csv.writer(file)
         title = []
         title.append('S1_id')
-        title.append('S1_lat')
+        title.append('S1_phase')
         title.append('S1_lon')
         title.append('S1_alt')
         title.append('S2_id')
@@ -65,17 +65,30 @@ def set_routing_simulation_result(gamma):
     filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
-        title = ['index', 'source', 'destination', 'hops', 'fail count', 'delay', 'overhead_signal']
+        title = ['packets', 'avg hops', 'avg prop', 'sum fails', 'avg fails', 'sum overhead msg', 'avg overhead msg']
         wr.writerow(title)
         file.close()
 def write_routing_simulation_result(data, gamma):
-    print(data)
     filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}.csv'
     with open(filename, 'a', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
+        num_of_packets = len(data)
+        sum_of_hops = 0
+        sum_of_delay = 0
+        sum_of_fails = 0
+        sum_of_overhead_msg = 0
         for log in data:
-            row_data = [log.index, log.src.id, log.dst.id, len(log.path), len(log.fail_info), log.delay, log.overhead_signal]
-            wr.writerow(row_data)
+            sum_of_hops += len(log.path)
+            sum_of_delay += log.delay
+            sum_of_fails += len(log.fail_info)
+            sum_of_overhead_msg += log.overhead_signal
+            # row_data = [log.index, log.src.id, log.dst.id, len(log.path), len(log.fail_info), log.delay, log.overhead_signal]
+            # wr.writerow(row_data)
+        avg_hops = sum_of_hops / num_of_packets
+        avg_delay = sum_of_delay / num_of_packets
+        avg_fails = sum_of_fails / num_of_packets
+        avg_overhead_msg = sum_of_overhead_msg / num_of_packets
+        wr.writerow([num_of_packets, avg_hops, avg_delay, sum_of_fails, avg_fails, sum_of_overhead_msg, avg_overhead_msg])
         file.close()
 def update_ECEF(inc, true_anomaly, ascending_node, alt):
     sin_ascend, cos_ascend = math.sin(ascending_node), math.cos(ascending_node)
