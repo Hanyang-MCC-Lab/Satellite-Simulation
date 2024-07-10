@@ -473,7 +473,6 @@ def get_nearest_sat(s_lon, s_lat, constellation):
 
 
 def new_get_direction(cur_orbit, dest_orbit, cur_sat, dest_sat, opt_line):
-    first, sescond = None, None
     if cur_orbit == dest_orbit:
         first = "up" if cur_sat > dest_sat else "down"
     elif cur_sat != opt_line:
@@ -587,27 +586,26 @@ def dtdr(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest
     prev_dir = None
     count = 0
     # ####### debugging print ########
-    # print("===MHR===")
-    # for i in mhr:
-    #     for j in i:
-    #         print(j.id, end=" ")
-    #     print()
+    print("===MHR===")
+    for i in mhr:
+        for j in i:
+            print(j.id, end=" ")
+        print()
     dest_info = dest.get_llh_info()
     cur_sat, cur_orbit = src_sat, src_orbit
     try:
         while cur_sat != dest_sat or cur_orbit != dest_orbit:  # 경로의 마지막이 destination일 때까지
-            # sleep(0.1)
-            success = True
+            sleep(0.1)
             path.append(mhr[cur_sat][cur_orbit])
             first_direction, second_direction = new_get_direction(cur_orbit, dest_orbit, cur_sat, dest_sat, opt_line)
             cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
             cur_id = mhr[cur_sat][cur_orbit].id
             # ####### debugging print ########
-            # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+            print("=====", mhr[cur_sat][cur_orbit].id, "=====")
             if dest.id in mhr[cur_sat][cur_orbit].detourTable:
                 # detour table에 의한 라우팅
                 # ####### debugging print ########
-                # print(cur_id, "has a direction in its detour table!")
+                print(cur_id, "has a direction in its detour table!")
                 direction = second_direction
                 # 링크 상태를 고려함
                 if direction == "right":
@@ -618,14 +616,12 @@ def dtdr(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest
             else:
                 # 일반 라우팅
                 # step1. 방향결정
-
                 direction = first_direction
                 if (prev_dir == "up" and direction == "down") or (prev_dir == "down" and direction == "up"):
-                    if prev_dir in ["up", "down"]:
-                        if dest_orbit < src_orbit:
-                            direction = "left"
-                        else:
-                            direction = "right"
+                    if dest_orbit < src_orbit:
+                        direction = "left"
+                    else:
+                        direction = "right"
 
             if (direction == "left" and mhr[cur_sat][cur_orbit].link_state[0] == 0) or (
                     direction == "right" and mhr[cur_sat][cur_orbit].link_state[1] == 0):
@@ -653,7 +649,7 @@ def dtdr(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest
                 prev_dir = direction
             else:  # 실패
                 # ####### debugging print ########
-                # print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
+                print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
                 sec_direction = ""
                 fail_history.append((cur_sat, cur_orbit))
                 fail_pair = [mhr[cur_sat][cur_orbit]]
@@ -677,12 +673,12 @@ def dtdr(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest
                         dest_sat += 1
                     fail_info[-1][0].fail_experiences[0 if direction == "left" else 1][-1] = n_hop_flood(3, mhr, dest_sat, dest_orbit, src_orbit, cur_sat, cur_orbit, src_sat, opt_line, dest, direction)
                     # ####### debugging print ########
-                    # print("extending mhr")
-                    # print("===MHR===")
-                    # for i in mhr:
-                    #     for j in i:
-                    #         print(j.id, end=" ")
-                    #     print()
+                    print("extending mhr")
+                    print("===MHR===")
+                    for i in mhr:
+                        for j in i:
+                            print(j.id, end=" ")
+                        print()
                 cur_sat += dt
                 prev_dir = "up" if dt < 0 else "down"
                 # print("move instantly to", mhr[cur_sat][cur_orbit].id)
