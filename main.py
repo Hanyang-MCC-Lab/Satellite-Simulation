@@ -321,26 +321,26 @@ class Packet:
         self.path = []
         self.overhead_signal = 0
         self.delay = 0
-        self.fail_info = []
+        self.fail_count = 0
 
     def transfer(self):
         global routing_table
         # 최적 위성 탐색
         if ALGORITHM == "OPSF" or ALGORITHM == "OPSPF":
             region, s_sat, s_orbit, dst_sat, dst_orbit = constellation_to_array(rtpg.graph), self.src.r, self.src.p, self.dst.r, self.dst.p
-        else:
+        # else:
             # minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,satNum, constellations[0])
-            mhr, s_sat, s_orbit, dst_sat, dst_orbit = new_mhr(self.src, self.dst, constellations[0])
+            # mhr, s_sat, s_orbit, dst_sat, dst_orbit = new_mhr(self.src, self.dst, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
         # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        self.path, self.fail_info, self.overhead_signal = dtdr(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        self.path, self.fail_count, self.overhead_signal = dtdr(self.src, self.dst)
         # self.path, self.fail_info, routing_table, self.overhead_signal = opspf(region, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
 
 
 class Network:
     def __init__(self):
         self.log = []
-        self.fail_log = {}
+        # self.fail_log = {}
 
     # 유클리드 기반 노드 간 거리
     def get_euc_distance(self, node_A: Satellite, node_B: Satellite):
@@ -364,7 +364,7 @@ class Network:
             # print("sum: ", packet.delay)
             a = b
         # if len(packet.fail_info) > 0:
-        self.fail_log[str(len(self.log))] = packet.fail_info
+        # self.fail_log[str(len(self.log))] = packet.fail_info
         self.log.append(packet)
         # TODO: fail_info 차원수 추가에 따른 수정 -> show GUI까지
 
@@ -375,6 +375,9 @@ class Network:
         #     "delay": round(delay * 1000, 6),
         #     "path": path,
         # })
+    def reset(self):
+        self.log.clear()
+        # self.fail_log.clear()
 
 
 class RoutingSimulator:
@@ -856,15 +859,17 @@ if __name__=="__main__":
                     for sat in orbit.satellites:
                         sat.check_link_state()
             # 기지국
-            # if time % 600 == 0:
-            #     rtpg.refresh_rtpg()
+            if time % 600 == 0:
+                rtpg.refresh_rtpg()
             #     for g in ground_stations:
             #         g.reset_connections()
             #         g.connect_satellites(constellations[0])
             if time % 100 == 0:
                 simulator.random_N_to_M_simulation(50)
                 # print(len(simulator.network.log))
-
+            if time % 40000 == 0:
+                write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
+                simulator.network.reset()
         running = True
         write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
 

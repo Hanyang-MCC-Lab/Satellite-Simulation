@@ -80,7 +80,30 @@ def write_routing_simulation_result(data, gamma):
         for log in data:
             sum_of_hops += len(log.path)
             sum_of_delay += log.delay
-            sum_of_fails += len(log.fail_info)
+            sum_of_fails += log.fail_count
+            sum_of_overhead_msg += log.overhead_signal
+            # row_data = [log.index, log.src.id, log.dst.id, len(log.path), len(log.fail_info), log.delay, log.overhead_signal]
+            # wr.writerow(row_data)
+        avg_hops = sum_of_hops / num_of_packets
+        avg_delay = sum_of_delay / num_of_packets
+        avg_fails = sum_of_fails / num_of_packets
+        avg_overhead_msg = sum_of_overhead_msg / num_of_packets
+        wr.writerow([num_of_packets, avg_hops, avg_delay, sum_of_fails, avg_fails, sum_of_overhead_msg, avg_overhead_msg])
+        file.close()
+
+def write_routing_simulation_result_partition(data, gamma, part):
+    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}/part{int(part)}.csv'
+    with open(filename, 'w', encoding='utf-8', newline='') as file:
+        wr = csv.writer(file)
+        num_of_packets = len(data)
+        sum_of_hops = 0
+        sum_of_delay = 0
+        sum_of_fails = 0
+        sum_of_overhead_msg = 0
+        for log in data:
+            sum_of_hops += len(log.path)
+            sum_of_delay += log.delay
+            sum_of_fails += log.fail_count
             sum_of_overhead_msg += log.overhead_signal
             # row_data = [log.index, log.src.id, log.dst.id, len(log.path), len(log.fail_info), log.delay, log.overhead_signal]
             # wr.writerow(row_data)
