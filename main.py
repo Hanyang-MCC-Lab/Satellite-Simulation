@@ -1,4 +1,5 @@
 'Python 3.9'
+import sys
 import time
 import numpy as np
 import vpython
@@ -62,25 +63,6 @@ class Orbit:
 
 
 class Satellite:
-    # 위성 객체의 attribute
-    sphere_attr = None
-    orbit = None
-    id = "SAT-"
-    true_anomaly = 0
-    # 위도, 경도, 고도(지구 반지름 + LEO 평균 고도)
-    longitude = 0
-    latitude = 0
-    altitude = 550
-    # ECEF 좌표계상의 x, y, z좌표
-    x, y, z = 0, 0, 0
-    state = None
-    # distance = None
-    handover_timer = [0, 0]
-    had_pat = [False, False]
-    protect_timer = [0, 0]
-    failed_state = False
-    detourTable = {}
-    direction = None
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
         self.failed_state = False
@@ -95,11 +77,11 @@ class Satellite:
         # 재 PAT 방지
         self.had_pat = [False, False]
         self.protect_timer = [0, 0]
-        self.detourTable = {}
+        self.detourTable = []
         self.should_notice_recovery = False
         self.sat_index = sat_index
         self.orbit_index = orbit.orbit_index
-        self.id = self.id + str(orbit.id[6:]) + "-" + str(sat_index)
+        self.id = "SAT-" + str(orbit.id[6:]) + "-" + str(sat_index)
         self.orbit = orbit
         self.true_anomaly = theta
         self.altitude = alt
@@ -156,14 +138,13 @@ class Satellite:
                         # print(self.handover_timer[i])
                         if not (self.link_state[0] or self.link_state[1]):
                             self.sphere_attr.color = color.black
-                            if ALGORITHM == "OPSF":
-                                routing_table.append(self.id)
+
                         else:
                             self.sphere_attr.color = color.red
                         if self not in pat_sat_array:
                             pat_sat_array.append(self)
-                        if self.id == "SAT-0-0":
-                            write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD, get_euc_distance([self.x, self.y, self.z], [element.x, element.y, element.z]))
+                        # if self.id == "SAT-0-0":
+                        #     write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD, get_euc_distance([self.x, self.y, self.z], [element.x, element.y, element.z]))
 
                     else:
                         # self.before_angle_oab_array[i] = new_angle_oab
@@ -230,8 +211,10 @@ class Satellite:
         #     self.laser_vec[i] = np.array([x, y, z])
         #     # print("after azi:", self.laser_azimuth[i], "after ele:", self.laser_elevation[i], "after vec:", self.laser_vec[i])
         # 구체 attribute 재설정
-        self.sphere_attr.pos = vec(self.y, self.z, self.x)
-        self.check_moving_state()
+        # ###################################################gui
+        # self.sphere_attr.pos = vec(self.y, self.z, self.x)
+        # self.check_moving_state()
+        #####################################################
         # self.distance.pos = self.sphere_attr.pos
 
     def get_great_distance(self, node_B):
@@ -742,98 +725,83 @@ def routing_result_csv():
     write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
 
 # 클래스 끝, 메인 로직 시작
-orbitNum = 72
-satNum = 22
-maxDistance = 0
-inclination = math.radians(float(53))
-orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
-satRot = math.radians(360 / satNum)  # 위성회전각도
-# 궤도 및 위성 리스트 생성
-constellations = []
-pat_sat_array = []
-protect_sat_array = []
-routing_table = []
-ground_stations = []
+if __name__=="__main__":
+    TOLERABLE_ANGLE_PER_SECOND = float(sys.argv[1:][0])
+    TOLERABLE_ANGLE = TOLERABLE_ANGLE_PER_SECOND * (SLOT_DURATION / 1000)
+    orbitNum = 72
+    satNum = 22
+    maxDistance = 0
+    inclination = math.radians(float(53))
+    orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
+    satRot = math.radians(360 / satNum)  # 위성회전각도
+    # 궤도 및 위성 리스트 생성
+    constellations = []
+    pat_sat_array = []
+    protect_sat_array = []
+    routing_table = []
+    ground_stations = []
 
-# 모니터 해상도에 따라 능동적인 해상도 조절
-M_size = pyautogui.size()
-monitor_width = M_size[0]
-monitor_height = M_size[1] - 300
+    # 모니터 해상도에 따라 능동적인 해상도 조절
+    M_size = pyautogui.size()
+    monitor_width = M_size[0]
+    monitor_height = M_size[1] - 300
 
-# 씬 구성
-# 기준 춘분점(Reference direction vector = (0, 0, 1))
-scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
-scene.resizable = False
+    # 씬 구성
+    # 기준 춘분점(Reference direction vector = (0, 0, 1))
+    scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
+    scene.resizable = False
 
-# xy평면과 x, y, z축 pos=vec(y방향, z방향, x방향)
-# mybox = box(pos=vec(0, 0, 0), length=30000, height=1, width=30000, opacity=0.5)
-# lineX = arrow(pos=vec(-15000, 0, 0), axis=vec(1, 0, 0), shaftwidth=50, headwidth=300, headlength=300, length=30000,
-#               color=color.magenta)
-# lineY = arrow(pos=vec(0, 0, -15000), axis=vec(0, 0, 1), shaftwidth=50, headwidth=300, headlength=300, length=30000,
-#               color=color.blue)
-# lineZ = arrow(pos=vec(0, -10000, 0), axis=vec(0, 1, 0), shaftwidth=50, headwidth=300, headlength=300, length=20000,
-#               color=color.green)
-# vernal_equinox = text(text='Vernal equinox', pos=vec(0, 500, 15000), align='center', height=500,
-#           color=color.cyan, billboard=True, emissive=True, depth=0.15)
-earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
-for g_info in GROUND_GEO_INFO:
-    station = GroundStation(g_info)
-    ground_stations.append(station)
-# for g in ground_stations:
-#     g.print_GS_info()
-# print(G_SEARCH_REGION_RADIUS)
+    earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
+    #기지국
+    # for g_info in GROUND_GEO_INFO:
+    #     station = GroundStation(g_info)
+    #     ground_stations.append(station)
 
-# polar_north = ring(pos=vec(0,math.sin(math.radians(70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
-# polar_south = ring(pos=vec(0,math.sin(math.radians(-70)) * (CONST_EARTH_RADIUS+780),0), axis=vec(0,1,0), radius= 2500, thickness = 50, color = color.magenta)
-# seam = ring(pos=vec(0,0,0), axis=vec(math.cos(math.radians(15)),0,math.sin(math.radians(15))), radius= CONST_EARTH_RADIUS+780, thickness = 50, color = color.magenta)
+    # for g in ground_stations:
+    #     g.print_GS_info()
+    # print(G_SEARCH_REGION_RADIUS)
 
-# 입력 GUI구성
-running = True
-setting = True
-# scene.caption = "\nOrbital inclination /  Altitude  / Orbits Number / Satellites Number / Max Transfer distance      Number of paths\n\n"
-scene.caption = "\n                    Orbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source(sat)       / Destination(sat)\n\n"
-button(text="Starlink Phase1", bind=deploy_starlink)
-n = winput(bind=Inc, width=120, type="numeric")
-i = winput(bind=Alt, width=120, type="numeric")
-o = winput(bind=OrbNum, width=120, type="numeric")
-s = winput(bind=SatNum, width=120, type="numeric")
-# m = winput(bind=MaxDist, width=120, type="numeric")
-button(text="Set", bind=Set)
-button(text="Run", bind=Run)
-q = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
-d = winput(bind=Dst, width=120, type="string")
-# cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
-button(text="Route", bind=Route)
-# button(text="Seoul -> LA (veta)", bind=seoul_to_la)
-button(text="Reset detour tables", bind=reset_detour_table)
-scene.append_to_caption("\n\n ground to ground routing")
-ground_src = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
-ground_dst = winput(bind=Dst, width=120, type="string")
-# cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
-button(text="ground Route", bind=ground)
-scene.append_to_caption("\n\n Routing result list  :  ")
-routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
-scene.append_to_caption("\n\n enable PAT")
-checkbox(bind=enable_PAT, checked=True)  # text to right of checkbox
-button(text="extract to csv", bind=routing_result_csv)
-# 메인
-time = 0
-orbit_cnt = 0
-simulator = RoutingSimulator()
-rtpg = RTPG()
-menu_choice = 0
-veta_results = []
-pat_available = True
-# seoul = sphere(pos=vec(math.cos(math.radians(37.5)) * math.sin(math.radians(127)) * (CONST_EARTH_RADIUS),
-#                        math.sin(math.radians(37.5)) * (CONST_EARTH_RADIUS),
-#                        math.cos(math.radians(37.5)) * math.cos(math.radians(127)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
-# losangeles = sphere(pos=vec(math.cos(math.radians(34)) * math.sin(math.radians(-118)) * (CONST_EARTH_RADIUS),
-#                        math.sin(math.radians(34)) * (CONST_EARTH_RADIUS),
-#                        math.cos(math.radians(34)) * math.cos(math.radians(-118)) * (CONST_EARTH_RADIUS)), axis=vec(0, 0, 1), radius=60, color=color.red)
-set_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
-set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
-while 1:
+    # 입력 GUI구성
+    running = False
+    setting = True
+    scene.caption = "\n                    Orbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source(sat)       / Destination(sat)\n\n"
+    button(text="Starlink Phase1", bind=deploy_starlink)
+    n = winput(bind=Inc, width=120, type="numeric")
+    i = winput(bind=Alt, width=120, type="numeric")
+    o = winput(bind=OrbNum, width=120, type="numeric")
+    s = winput(bind=SatNum, width=120, type="numeric")
+    # m = winput(bind=MaxDist, width=120, type="numeric")
+    button(text="Set", bind=Set)
+    button(text="Run", bind=Run)
+    q = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
+    d = winput(bind=Dst, width=120, type="string")
+    # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
+    button(text="Route", bind=Route)
+    # button(text="Seoul -> LA (veta)", bind=seoul_to_la)
+    button(text="Reset detour tables", bind=reset_detour_table)
+    scene.append_to_caption("\n\n ground to ground routing")
+    ground_src = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
+    ground_dst = winput(bind=Dst, width=120, type="string")
+    # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
+    button(text="ground Route", bind=ground)
+    scene.append_to_caption("\n\n Routing result list  :  ")
+    routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
+    scene.append_to_caption("\n\n enable PAT")
+    checkbox(bind=enable_PAT, checked=True)  # text to right of checkbox
+    button(text="extract to csv", bind=routing_result_csv)
+    # 메인
+    time = 0
+    orbit_cnt = 0
+    simulator = RoutingSimulator()
+    rtpg = RTPG()
+    menu_choice = 0
+    veta_results = []
+    pat_available = True
+    set_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
+    set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
+    deploy_starlink()
 
+    # while 1:
     while setting == False:
         # 케플러요소 입력
         # print("Setting")
@@ -887,18 +855,19 @@ while 1:
                 for orbit in orbits:
                     for sat in orbit.satellites:
                         sat.check_link_state()
-
-            if time % 600 == 0:
-                rtpg.refresh_rtpg()
-                for g in ground_stations:
-                    g.reset_connections()
-                    g.connect_satellites(constellations[0])
+            # 기지국
+            # if time % 600 == 0:
+            #     rtpg.refresh_rtpg()
+            #     for g in ground_stations:
+            #         g.reset_connections()
+            #         g.connect_satellites(constellations[0])
             if time % 100 == 0:
                 simulator.random_N_to_M_simulation(50)
                 # print(len(simulator.network.log))
 
         running = True
         write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
+
         # if running == True:
         #     break
 
