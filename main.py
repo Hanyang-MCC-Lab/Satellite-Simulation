@@ -430,11 +430,9 @@ class RoutingSimulator:
         random.shuffle(self.randomSatList)
         # for k in range(int(count) * 2):  # 디버깅용
         #     print(self.randomSatList[k])
-        for j in range(int(count)):  # 다중 라우팅 병렬처리
-            self.parallelProcess.append(threading.Thread(
-                target=self.network.routing(self.randomSatList[j], self.randomSatList[int(count) + j])))
-            self.parallelProcess[j].start()  # 리스트 맨 마지막 위성으로 하나의 목적지 지정
-        self.parallelProcess.clear()
+        for j in range(int(count)):  # 다중 라우팅
+            self.network.routing(self.randomSatList[j], self.randomSatList[int(count) + j])
+
         # self.print_log()
 
     # def ground_to_ground_simulation(self):
@@ -865,7 +863,7 @@ while running == False:
         #         g.reset_connections()
         #         g.connect_satellites(constellations[0])
         if time % 100 == 0:
-            simulator.random_N_to_M_simulation(50)
+            simulator.random_N_to_M_simulation(17)
             # print(len(simulator.network.log))
         # if time % 40000 == 0:
         #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
