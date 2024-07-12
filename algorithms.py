@@ -529,7 +529,7 @@ def dtdr(src, dest):
     count = 0
     cur = src
     try:
-        while cur == dest:  # 경로의 마지막이 destination일 때까지
+        while cur != dest:  # 경로의 마지막이 destination일 때까지
             # sleep(0.1)
             success = True
             path.append(cur)

@@ -2,7 +2,7 @@
 import sys
 import time
 import numpy as np
-import vpython
+import vpython as vp
 from tqdm import tqdm
 
 from KNBG import connect_sat_ground
@@ -92,7 +92,7 @@ class Satellite:
         # ECEF 좌표
         self.x, self.y, self.z = update_ECEF(self.orbit.inclination, self.true_anomaly, self.orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
-        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100, 100, 100))
+        self.sphere_attr = vp.sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100, 100, 100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
         self.check_moving_state()
 
@@ -236,11 +236,11 @@ class GroundStation:
         self.longitude = math.radians(geo_info[1])
         self.x, self.y, self.z = update_ECEF_using_lat_lon(self.latitude, self.longitude, CONST_EARTH_RADIUS)
         self.p_asc, self.r_asc, self.p_desc, self.r_desc = coordinates_of_ground_station(self.latitude, self.longitude, inclination)
-        self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=80, color=color.white, up=vec(100, 100, 100))
+        self.sphere_attr = vp.sphere(pos=vec(self.y, self.z, self.x), radius=80, color=color.white, up=vec(100, 100, 100))
         self.delta_p, self.delta_r = grid_search_region(self.latitude, self.longitude, inclination)
         self.search_range_asc, self.search_range_desc = self.update_search_range()
         self.name = f'GS|a{self.p_asc}-{self.r_asc}|d{self.p_desc}-{self.r_desc}'
-        self.connection_area = sphere(pos=vec(self.y, self.z, self.x), radius=G_SEARCH_REGION_RADIUS, color=color.green, up=vec(100, 100, 100), opacity=0.08)
+        self.connection_area = vp.sphere(pos=vec(self.y, self.z, self.x), radius=G_SEARCH_REGION_RADIUS, color=color.green, up=vec(100, 100, 100), opacity=0.08)
         self.connections = []
 
         self.routing_table = {}
@@ -390,20 +390,20 @@ class RoutingSimulator:
     def __init__(self):
         self.network = Network()
 
-    def one_to_one(self):
-        thread = threading.Thread(target=self.one_to_one_simulate)
-        thread.start()
-        # 종료까지 blocking
-        thread.join()
-        # 종료후 결과 표출
-        self.print_log()
+    # def one_to_one(self):
+    #     thread = threading.Thread(target=self.one_to_one_simulate)
+    #     thread.start()
+    #     # 종료까지 blocking
+    #     thread.join()
+    #     # 종료후 결과 표출
+    #     self.print_log()
 
-    def one_to_one_simulate(self):
-        a = Src(q)
-        b = Dst(d)
-        s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
-        e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
-        self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
+    # def one_to_one_simulate(self):
+    #     a = Src(q)
+    #     b = Dst(d)
+    #     s_orbit, s_sat = int(a.split("/")[0]), int(a.split("/")[1])
+    #     e_orbit, e_sat = int(b.split("/")[0]), int(b.split("/")[1])
+    #     self.network.routing(constellations[0][s_orbit].satellites[s_sat], constellations[0][e_orbit].satellites[e_sat])
 
     def random_N_to_one_simulation(self, count):
         for i in range(int(count) + 1):
@@ -437,19 +437,19 @@ class RoutingSimulator:
         self.parallelProcess.clear()
         # self.print_log()
 
-    def ground_to_ground_simulation(self):
-        src, dst = ground_Src(ground_src), ground_Dst(ground_dst)
-        s_lon, s_lat = CITY_INFO[src]
-        d_lon, d_lat = CITY_INFO[dst]
-        if s_lon < 0:
-            s_lon += 360
-        if d_lon < 0:
-            d_lon += 360
-        start = get_nearest_sat(s_lon, s_lat, constellations)
-        end = get_nearest_sat(d_lon, d_lat, constellations)
-        simulator.network.routing(start, end)
-        self.print_log()
-        return 0
+    # def ground_to_ground_simulation(self):
+    #     src, dst = ground_Src(ground_src), ground_Dst(ground_dst)
+    #     s_lon, s_lat = CITY_INFO[src]
+    #     d_lon, d_lat = CITY_INFO[dst]
+    #     if s_lon < 0:
+    #         s_lon += 360
+    #     if d_lon < 0:
+    #         d_lon += 360
+    #     start = get_nearest_sat(s_lon, s_lat, constellations)
+    #     end = get_nearest_sat(d_lon, d_lat, constellations)
+    #     simulator.network.routing(start, end)
+    #     self.print_log()
+    #     return 0
 
     def show_result_to_GUI(self, index):
         vector_list = []
@@ -501,7 +501,7 @@ class RoutingSimulator:
                                          fail_sat1.get_ecef_info()[0])
                     fail_sat2_info = vec(fail_sat2.get_ecef_info()[1], fail_sat2.get_ecef_info()[2],
                                          fail_sat2.get_ecef_info()[0])
-                    fail_point = sphere(pos=fail_sat1_info, radius=150, color=color.red, opacity=1)
+                    fail_point = vp.sphere(pos=fail_sat1_info, radius=150, color=color.red, opacity=1)
                     fail_line = arrow(pos=fail_sat1_info, axis=fail_sat2_info - fail_sat1_info, shaftwidth=50,
                                       headwidth=0,
                                       headlength=0,
@@ -512,7 +512,7 @@ class RoutingSimulator:
                 RoutingSimulator.fail_objects[str(index)] = fail_arr
 
         # moving dot moving
-        moving_dot = sphere(pos=vector_list[0], radius=200, color=color.green, opacity=1)
+        moving_dot = vp.sphere(pos=vector_list[0], radius=200, color=color.green, opacity=1)
         dt = 0.01
         for i in range(len(vector_list) - 1):
             t = 0.0
@@ -613,24 +613,24 @@ def Run(r):
         r.text = "Runnning"
 
 
-def Route(t):
-    t.text = "Routing"
-    # simulator.random_N_to_M_simulation(Count(cont))
-    simulator.one_to_one()
-    t.text = "Route"
-    log_list = ["None"]
-    for i in simulator.network.log:
-        log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
-    routing_list_menu.choices = log_list
-
-
-def ground(t):
-    t.text = "Routing"
-    simulator.ground_to_ground_simulation()
-    log_list = ["None"]
-    for i in simulator.network.log:
-        log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
-    routing_list_menu.choices = log_list
+# def Route(t):
+#     t.text = "Routing"
+#     # simulator.random_N_to_M_simulation(Count(cont))
+#     simulator.one_to_one()
+#     t.text = "Route"
+#     log_list = ["None"]
+#     for i in simulator.network.log:
+#         log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
+#     routing_list_menu.choices = log_list
+#
+#
+# def ground(t):
+#     t.text = "Routing"
+#     simulator.ground_to_ground_simulation()
+#     log_list = ["None"]
+#     for i in simulator.network.log:
+#         log_list.append(str(i.index) + ". " + i.name + " (delay: " + str(i.delay) + ")")
+#     routing_list_menu.choices = log_list
 
 
 def reset_detour_table(t):
@@ -663,18 +663,18 @@ def Mto1(cont):
     return cont.text
 
 
-def chooseLog(m):
-    global menu_choice
-    print(m.selected)
-    if m.selected is None:
-        simulator.reset_GUI()
-    else:
-        for i in range(len(routing_list_menu.choices[1:])):
-            if m.selected == routing_list_menu.choices[i + 1]:
-                menu_choice = i
-                break
-        print(menu_choice)
-        simulator.show_result_to_GUI(menu_choice)
+# def chooseLog(m):
+#     global menu_choice
+#     print(m.selected)
+#     if m.selected is None:
+#         simulator.reset_GUI()
+#     else:
+#         for i in range(len(routing_list_menu.choices[1:])):
+#             if m.selected == routing_list_menu.choices[i + 1]:
+#                 menu_choice = i
+#                 break
+#         print(menu_choice)
+#         simulator.show_result_to_GUI(menu_choice)
 
 
 # 이중for문을 통하여 궤도 및 위성 배치 함수
@@ -728,151 +728,156 @@ def routing_result_csv():
     write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
 
 # 클래스 끝, 메인 로직 시작
-if __name__=="__main__":
-    TOLERABLE_ANGLE_PER_SECOND = float(sys.argv[1:][0])
-    TOLERABLE_ANGLE = TOLERABLE_ANGLE_PER_SECOND * (SLOT_DURATION / 1000)
-    orbitNum = 72
-    satNum = 22
-    maxDistance = 0
-    inclination = math.radians(float(53))
-    orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
-    satRot = math.radians(360 / satNum)  # 위성회전각도
-    # 궤도 및 위성 리스트 생성
-    constellations = []
-    pat_sat_array = []
-    protect_sat_array = []
-    routing_table = []
-    ground_stations = []
+# if __name__=="__main__":
+TOLERABLE_ANGLE_PER_SECOND = float(sys.argv[1:][0])
+TOLERABLE_ANGLE = TOLERABLE_ANGLE_PER_SECOND * (SLOT_DURATION / 1000)
+orbitNum = 72
+satNum = 22
+maxDistance = 0
+inclination = math.radians(float(53))
+orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
+satRot = math.radians(360 / satNum)  # 위성회전각도
+# 궤도 및 위성 리스트 생성
+constellations = []
+pat_sat_array = []
+protect_sat_array = []
+routing_table = []
+ground_stations = []
 
-    # 모니터 해상도에 따라 능동적인 해상도 조절
-    M_size = pyautogui.size()
-    monitor_width = M_size[0]
-    monitor_height = M_size[1] - 300
+# 모니터 해상도에 따라 능동적인 해상도 조절
+M_size = pyautogui.size()
+monitor_width = M_size[0]
+monitor_height = M_size[1] - 300
 
-    # 씬 구성
-    # 기준 춘분점(Reference direction vector = (0, 0, 1))
-    scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
-    scene.resizable = False
+# 씬 구성
+# 기준 춘분점(Reference direction vector = (0, 0, 1))
+scene = canvas(width=monitor_width - 15, height=monitor_height - 15)
+scene.resizable = False
 
-    earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
-    #기지국
-    # for g_info in GROUND_GEO_INFO:
-    #     station = GroundStation(g_info)
-    #     ground_stations.append(station)
+earth = vp.sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
+#기지국
+# for g_info in GROUND_GEO_INFO:
+#     station = GroundStation(g_info)
+#     ground_stations.append(station)
 
-    # for g in ground_stations:
-    #     g.print_GS_info()
-    # print(G_SEARCH_REGION_RADIUS)
+# for g in ground_stations:
+#     g.print_GS_info()
+# print(G_SEARCH_REGION_RADIUS)
 
-    # 입력 GUI구성
-    running = False
-    setting = True
-    scene.caption = "\n                    Orbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source(sat)       / Destination(sat)\n\n"
-    button(text="Starlink Phase1", bind=deploy_starlink)
-    n = winput(bind=Inc, width=120, type="numeric")
-    i = winput(bind=Alt, width=120, type="numeric")
-    o = winput(bind=OrbNum, width=120, type="numeric")
-    s = winput(bind=SatNum, width=120, type="numeric")
-    # m = winput(bind=MaxDist, width=120, type="numeric")
-    button(text="Set", bind=Set)
-    button(text="Run", bind=Run)
-    q = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
-    d = winput(bind=Dst, width=120, type="string")
-    # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
-    button(text="Route", bind=Route)
-    # button(text="Seoul -> LA (veta)", bind=seoul_to_la)
-    button(text="Reset detour tables", bind=reset_detour_table)
-    scene.append_to_caption("\n\n ground to ground routing")
-    ground_src = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
-    ground_dst = winput(bind=Dst, width=120, type="string")
-    # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
-    button(text="ground Route", bind=ground)
-    scene.append_to_caption("\n\n Routing result list  :  ")
-    routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
-    scene.append_to_caption("\n\n enable PAT")
-    checkbox(bind=enable_PAT, checked=True)  # text to right of checkbox
-    button(text="extract to csv", bind=routing_result_csv)
-    # 메인
-    time = 0
-    orbit_cnt = 0
-    simulator = RoutingSimulator()
-    rtpg = RTPG()
-    menu_choice = 0
-    veta_results = []
-    pat_available = True
-    set_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
-    set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
-    deploy_starlink()
+# 입력 GUI구성
+running = False
+setting = True
+# scene.caption = "\n                    Orbital inclination /  Altitude      / Orbits Number / Satellites Number             /     Source(sat)       / Destination(sat)\n\n"
+# button(text="Starlink Phase1", bind=deploy_starlink)
+# n = winput(bind=Inc, width=120, type="numeric")
+# i = winput(bind=Alt, width=120, type="numeric")
+# o = winput(bind=OrbNum, width=120, type="numeric")
+# s = winput(bind=SatNum, width=120, type="numeric")
+# # m = winput(bind=MaxDist, width=120, type="numeric")
+# button(text="Set", bind=Set)
+# button(text="Run", bind=Run)
+# q = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
+# d = winput(bind=Dst, width=120, type="string")
+# # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
+# button(text="Route", bind=Route)
+# # button(text="Seoul -> LA (veta)", bind=seoul_to_la)
+# button(text="Reset detour tables", bind=reset_detour_table)
+# scene.append_to_caption("\n\n ground to ground routing")
+# ground_src = winput(bind=Src, width=120, type="string")  # 1 to 1 용 변수
+# ground_dst = winput(bind=Dst, width=120, type="string")
+# # cont = winput(bind=Mto1, width=120, type="numeric") # 멀티패스 입력란
+# button(text="ground Route", bind=ground)
+# scene.append_to_caption("\n\n Routing result list  :  ")
+# routing_list_menu = menu(choices=["None"], index=0, bind=chooseLog)
+# scene.append_to_caption("\n\n enable PAT")
+# checkbox(bind=enable_PAT, checked=True)  # text to right of checkbox
+# button(text="extract to csv", bind=routing_result_csv)
+# 메인
+time = 0
+orbit_cnt = 0
+simulator = RoutingSimulator()
+rtpg = RTPG()
+menu_choice = 0
+veta_results = []
+pat_available = True
+# set_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
+set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
+deploy_starlink()
 
-    # while 1:
-    while setting == False:
-        # 케플러요소 입력
-        # print("Setting")
-        inclination = math.radians(float(Inc(n)))  # 궤도경사
-        altitude = int(Alt(i))  # 궤도 반지름
-        orbitNum = OrbNum(o)
-        satNum = SatNum(s)
-        orbitRot = math.radians(360 / orbitNum)
-        satRot = math.radians(360 / satNum)
-        # maxDistance = MaxDist(m)
-        deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
-        orbit_cnt = (orbit_cnt + 1) % 4
-        setting = not setting
+# while 1:
+# while setting == False:
+#     # 케플러요소 입력
+#     # print("Setting")
+#     # inclination = math.radians(float(Inc(n)))  # 궤도경사
+#     # altitude = int(Alt(i))  # 궤도 반지름
+#     # orbitNum = OrbNum(o)
+#     # satNum = SatNum(s)
+#     orbitRot = math.radians(360 / orbitNum)
+#     satRot = math.radians(360 / satNum)
+#     # maxDistance = MaxDist(m)
+#     # deploy(inclination, altitude, CONST_COLORS[orbit_cnt])
+#     orbit_cnt = (orbit_cnt + 1) % 4
+#     setting = not setting
 
-    while running == False:
-        # print("Running")
+while running == False:
+    # print("Running")
 
-        # 타이머 & 핸드오버
-        for t in tqdm(range(0, SIMULATION_TIME+1, SLOT_DURATION)):
-            time = t
-            for sat in pat_sat_array:
-                for index in range(len(sat.handover_timer)):
-                    if sat.handover_timer[index] > 0:
-                        sat.handover_timer[index] -= SLOT_DURATION
-                        if sat.handover_timer[index] <= 0:
-                            sat.handover_timer[index] = 0
-                            sat.change_link_state(index)
-                            sat.new_link(index)
-                            if ALGORITHM != "OPSPF" and ALGORITHM != "OPSF":
-                                for fail_experience in sat.fail_experiences[index]:
-                                    recovery_flood(sat, index)
+    # 타이머 & 핸드오버
+    for t in tqdm(range(0, SIMULATION_TIME+1, SLOT_DURATION)):
+        time = t
+        for sat in pat_sat_array:
+            for index in range(len(sat.handover_timer)):
+                if sat.handover_timer[index] > 0:
+                    sat.handover_timer[index] -= SLOT_DURATION
+                    if sat.handover_timer[index] <= 0:
+                        sat.handover_timer[index] = 0
+                        sat.change_link_state(index)
+                        sat.new_link(index)
+                        if ALGORITHM != "OPSPF" and ALGORITHM != "OPSF":
+                            for fail_experience in sat.fail_experiences[index]:
+                                recovery_flood(sat, index)
 
-                            # sat.protect_timer[index] += PROTECT_TIME
-                            # if sat not in protect_sat_array:
-                            #     protect_sat_array.append(sat)
-                            # print(sat.handover_timer)
-                if 0 not in sat.link_state:
-                    if sat.id in routing_table:
-                        routing_table.remove(sat.id)
-                    pat_sat_array.remove(sat)
+                        # sat.protect_timer[index] += PROTECT_TIME
+                        # if sat not in protect_sat_array:
+                        #     protect_sat_array.append(sat)
+                        # print(sat.handover_timer)
+            if 0 not in sat.link_state:
+                if sat.id in routing_table:
+                    routing_table.remove(sat.id)
+                pat_sat_array.remove(sat)
 
-            # sleep(0.2)
-            # 공전
-            for orbits in constellations:
-                for orbit in orbits:
-                    for sat in orbit.satellites:
-                        sat.refresh(CONST_SAT_DT)
+        # sleep(0.2)
+        # 공전
+        for orbits in constellations:
+            for orbit in orbits:
+                for sat in orbit.satellites:
+                    sat.refresh(CONST_SAT_DT)
 
-            # 링크 확인
-            for orbits in constellations:
-                for orbit in orbits:
-                    for sat in orbit.satellites:
-                        sat.check_link_state()
-            # 기지국
-            if time % 600 == 0:
-                rtpg.refresh_rtpg()
-            #     for g in ground_stations:
-            #         g.reset_connections()
-            #         g.connect_satellites(constellations[0])
-            if time % 100 == 0:
-                simulator.random_N_to_M_simulation(50)
-                # print(len(simulator.network.log))
-            if time % 40000 == 0:
-                write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
-                simulator.network.reset()
-        running = True
-        write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
+        # 링크 확인
+        for orbits in constellations:
+            for orbit in orbits:
+                for sat in orbit.satellites:
+                    sat.check_link_state()
+        # 기지국
+        if time % 600 == 0:
+            rtpg.refresh_rtpg()
+        #     for g in ground_stations:
+        #         g.reset_connections()
+        #         g.connect_satellites(constellations[0])
+        if time % 100 == 0:
+            simulator.random_N_to_M_simulation(50)
+            # print(len(simulator.network.log))
+        # if time % 40000 == 0:
+        #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
+        #     simulator.network.reset()
+    running = True
+    write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
+    # 모든 VPython 객체 제거
+    scene.delete()
+    vpython.Exit()
 
-        # if running == True:
+    # 프로그램 종료
+    sys.exit(0)
+    # if running == True:
         #     break
 

@@ -62,14 +62,14 @@ def write_simulation_result(sat1, sat2, direction, gap, time, gamma, distance):
     f.close()
 
 def set_routing_simulation_result(gamma):
-    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}.csv'
+    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
-        title = ['packets', 'avg hops', 'avg prop', 'sum fails', 'avg fails', 'sum overhead msg', 'avg overhead msg']
+        title = ['gamma', 'packets', 'avg hops', 'avg prop', 'sum fails', 'avg fails', 'sum overhead msg', 'avg overhead msg']
         wr.writerow(title)
         file.close()
 def write_routing_simulation_result(data, gamma):
-    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result{gamma}.csv'
+    filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result.csv'
     with open(filename, 'a', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
         num_of_packets = len(data)
@@ -88,7 +88,7 @@ def write_routing_simulation_result(data, gamma):
         avg_delay = sum_of_delay / num_of_packets
         avg_fails = sum_of_fails / num_of_packets
         avg_overhead_msg = sum_of_overhead_msg / num_of_packets
-        wr.writerow([num_of_packets, avg_hops, avg_delay, sum_of_fails, avg_fails, sum_of_overhead_msg, avg_overhead_msg])
+        wr.writerow([gamma, num_of_packets, avg_hops, avg_delay, sum_of_fails, avg_fails, sum_of_overhead_msg, avg_overhead_msg])
         file.close()
 
 def write_routing_simulation_result_partition(data, gamma, part):
