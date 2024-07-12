@@ -76,9 +76,44 @@ def reconstruct_path(parents, target):
 
 import math
 
+# SAT_NUM과 ORBIT_NUM 정의
+SAT_NUM = 5
+ORBIT_NUM = 5
+
+# detour_table 초기화
+detour_table = {f'SAT-{j}-{i}': set() for i in range(ORBIT_NUM) for j in range(SAT_NUM)}
 
 
+# 노드 클래스 예제
+class Node:
+    def __init__(self, id):
+        self.id = id
 
+
+# 예제 사용 방법
+if __name__ == "__main__":
+    # 노드 초기화
+    cur = Node('SAT-1-2')
+    d_id = 'example_id'
+    detour_table = {}
+    detour_table[cur.id] = set()
+    # 값 추가
+    detour_table[cur.id].add(d_id)
+
+    # 값 확인
+    if d_id in detour_table[cur.id]:
+        print(f"{d_id} is in detour_table at {cur.id}")
+    else:
+        print(f"{d_id} is not in detour_table at {cur.id}")
+
+    # 값 제거
+    detour_table[cur.id].discard(d_id)
+
+    # 값 제거 후 확인
+    if d_id in detour_table[cur.id]:
+        print(f"{d_id} is still in detour_table at {cur.id}")
+    else:
+        print(f"{d_id} has been removed from detour_table at {cur.id}")
 
 # Example values
 # theta = 25  # in degrees

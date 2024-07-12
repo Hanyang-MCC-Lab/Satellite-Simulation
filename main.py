@@ -1,4 +1,5 @@
 'Python 3.9'
+import concurrent.futures
 import sys
 import time
 import numpy as np
@@ -20,7 +21,7 @@ from minimum_deflection_angle import *
 import random
 import threading
 from algorithms import *
-
+import detourTable
 
 class Orbit:
     # 궤도 객체의 attribute
@@ -65,24 +66,20 @@ class Orbit:
 class Satellite:
 
     def __init__(self, orbit: Orbit, sat_index, inclination, alt, theta):
-        self.failed_state = False
+        # self.failed_state = False
         self.link_state = [1, 1]
         self.handover_timer = [0, 0]
-        self.before_angle_oab_array = []
-        self.link_sat = []
         self.fail_experiences = {0: [], 1: []}
         # laser inter satellite link
         self.link = {"up": None, "down": None, "left": None, "right": None, "ground": []}
         self.before_inter_sat_vec_arr = []
-        # 재 PAT 방지
-        self.had_pat = [False, False]
-        self.protect_timer = [0, 0]
-        self.detourTable = []
         self.should_notice_recovery = False
         self.sat_index = sat_index
         self.orbit_index = orbit.orbit_index
+        self.inclination = inclination
+        self.lon_of_ascending = orbit.lon_of_ascending
         self.id = "SAT-" + str(orbit.id[6:]) + "-" + str(sat_index)
-        self.orbit = orbit
+        # self.orbit = orbit
         self.true_anomaly = theta
         self.altitude = alt
         # 위도, 경도
@@ -90,7 +87,7 @@ class Satellite:
         self.longitude = ((math.atan2(math.cos(inclination) * math.sin(theta),
                                      math.cos(theta))) % (2 * np.pi) + orbit.lon_of_ascending) % (2*math.pi)
         # ECEF 좌표
-        self.x, self.y, self.z = update_ECEF(self.orbit.inclination, self.true_anomaly, self.orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
+        self.x, self.y, self.z = update_ECEF(orbit.inclination, self.true_anomaly, orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
         self.sphere_attr = vp.sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100, 100, 100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
@@ -123,36 +120,31 @@ class Satellite:
         global pat_available
         global routing_table
         if pat_available:
-            for i in range(len(self.link_sat)):
-                # print(i, self.link_sat, self.had_pat, self.link_state)
-                if (not self.had_pat[i]) and self.link_state[i] == 1:
+            for i in range(2):
+                if self.link_state[i] == 1:
                     # if self.protect_timer[i] == 0 and self.link_state[i] == 1:
-                    element = self.link_sat[i]
+                    element = self.link["left" if i == 0 else "right"]
                     current_vec = np.array([element.x - self.x, element.y - self.y, element.z - self.z])
                     before_vec = self.before_inter_sat_vec_arr[i]
                     angle_gap = calc_angle_between_vectors(current_vec, before_vec)
                     if angle_gap > TOLERABLE_ANGLE:
                         self.change_link_state(i)
                         self.handover_timer[i] += HANDOVER_TIME
-                        # self.had_pat[i] = True
-                        # print(self.handover_timer[i])
                         if not (self.link_state[0] or self.link_state[1]):
                             self.sphere_attr.color = color.black
 
                         else:
                             self.sphere_attr.color = color.red
-                        if self not in pat_sat_array:
-                            pat_sat_array.append(self)
+                        if (self.sat_index, self.orbit_index) not in pat_sat_array:
+                            pat_sat_array.add((self.sat_index, self.orbit_index))
                         # if self.id == "SAT-0-0":
                         #     write_simulation_result(self, element, i, angle_gap, time, LASER_ANGLE_THRESHOLD, get_euc_distance([self.x, self.y, self.z], [element.x, element.y, element.z]))
 
                     else:
-                        # self.before_angle_oab_array[i] = new_angle_oab
                         self.new_link(i)
-                        # continue
         else:
-            for i in range(len(self.link_sat)):
-                self.new_link(i)
+            self.new_link(0)
+            self.new_link(1)
 
     def change_link_state(self, index):
         if self.link_state[index]:
@@ -161,7 +153,7 @@ class Satellite:
             self.link_state[index] = 1
 
     def get_llh_info(self):
-        info = {"ORBIT-ID": self.orbit.id,
+        info = {
                 "SAT-ID": self.id,
                 "lon": math.degrees(self.longitude),
                 "lat": math.degrees(self.latitude),
@@ -181,14 +173,14 @@ class Satellite:
         return info
 
     def new_link(self, index):
-        re_PAT(self, self.link_sat[index], index)
+        re_PAT(self, self.link["left" if index==0 else "right"], index)
 
     def refresh(self, dt):
         self.true_anomaly = math.radians((math.degrees(self.true_anomaly) + dt) % 360)
         # 위도, 경도
-        delta_latitude = math.asin(math.sin(self.orbit.inclination) * math.sin(self.true_anomaly)) - self.latitude
-        delta_longitude = (math.atan2(math.cos(self.orbit.inclination) * math.sin(self.true_anomaly), math.cos(
-            self.true_anomaly))) % (2 * np.pi) + self.orbit.lon_of_ascending - self.longitude
+        delta_latitude = math.asin(math.sin(self.inclination) * math.sin(self.true_anomaly)) - self.latitude
+        delta_longitude = (math.atan2(math.cos(self.inclination) * math.sin(self.true_anomaly), math.cos(
+            self.true_anomaly))) % (2 * np.pi) + self.lon_of_ascending - self.longitude
         is_passing_zero = self.latitude
         self.latitude += delta_latitude
         self.longitude += delta_longitude
@@ -199,7 +191,7 @@ class Satellite:
         self.r = int((u - math.pi/2)//DELTA_PI)
 
         # ECEF 좌표
-        self.x, self.y, self.z = update_ECEF(self.orbit.inclination, self.true_anomaly, self.orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
+        self.x, self.y, self.z = update_ECEF(self.inclination, self.true_anomaly, self.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
         # self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 3try
         # for i in range(len(self.link_sat)):
@@ -325,6 +317,7 @@ class Packet:
 
     def transfer(self):
         global routing_table
+        global detour_table
         # 최적 위성 탐색
         if ALGORITHM == "OPSF" or ALGORITHM == "OPSPF":
             region, s_sat, s_orbit, dst_sat, dst_orbit = constellation_to_array(rtpg.graph), self.src.r, self.src.p, self.dst.r, self.dst.p
@@ -333,7 +326,7 @@ class Packet:
             # mhr, s_sat, s_orbit, dst_sat, dst_orbit = new_mhr(self.src, self.dst, constellations[0])
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
         # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        self.path, self.fail_count, self.overhead_signal = dtdr(self.src, self.dst)
+        self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(detour_table, self.src, self.dst)
         # self.path, self.fail_info, routing_table, self.overhead_signal = opspf(region, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
 
 
@@ -430,12 +423,12 @@ class RoutingSimulator:
         random.shuffle(self.randomSatList)
         # for k in range(int(count) * 2):  # 디버깅용
         #     print(self.randomSatList[k])
-        for j in range(int(count)):  # 다중 라우팅 병렬처리
-            self.parallelProcess.append(threading.Thread(
-                target=self.network.routing(self.randomSatList[j], self.randomSatList[int(count) + j])))
-            self.parallelProcess[j].start()  # 리스트 맨 마지막 위성으로 하나의 목적지 지정
-        self.parallelProcess.clear()
-        # self.print_log()
+
+        for j in range(int(count)):
+            sat1 = self.randomSatList[j]
+            sat2 = self.randomSatList[int(count) + j]
+            self.network.routing(sat1, sat2)
+
 
     # def ground_to_ground_simulation(self):
     #     src, dst = ground_Src(ground_src), ground_Dst(ground_dst)
@@ -633,12 +626,12 @@ def Run(r):
 #     routing_list_menu.choices = log_list
 
 
-def reset_detour_table(t):
-    t.text = "Ing.."
-    for orbit in constellations[0]:
-        for sat in orbit.satellites:
-            sat.detourTable = {}
-    t.text = "Reset detour tables"
+# def reset_detour_table(t):
+#     t.text = "Ing.."
+#     for orbit in constellations[0]:
+#         for sat in orbit.satellites:
+#             sat.detourTable.clear()
+#     t.text = "Reset detour tables"
 
 
 def Src(q):
@@ -739,7 +732,7 @@ orbitRot = math.radians(360 / orbitNum)  # 궤도회전각도
 satRot = math.radians(360 / satNum)  # 위성회전각도
 # 궤도 및 위성 리스트 생성
 constellations = []
-pat_sat_array = []
+pat_sat_array = set()
 protect_sat_array = []
 routing_table = []
 ground_stations = []
@@ -803,6 +796,13 @@ pat_available = True
 # set_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
 set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
 deploy_starlink()
+constellation = []
+detour_table = {}
+for i in constellations[-1]:
+    constellation.append(i.satellites)
+    for j in i.satellites:
+        detour_table[j.id] = set()
+
 
 # while 1:
 # while setting == False:
@@ -825,8 +825,9 @@ while running == False:
     # 타이머 & 핸드오버
     for t in tqdm(range(0, SIMULATION_TIME+1, SLOT_DURATION)):
         time = t
-        for sat in pat_sat_array:
-            for index in range(len(sat.handover_timer)):
+        for (si, oi) in pat_sat_array:
+            sat = constellation[oi][si]
+            for index in range(2):
                 if sat.handover_timer[index] > 0:
                     sat.handover_timer[index] -= SLOT_DURATION
                     if sat.handover_timer[index] <= 0:
@@ -835,7 +836,7 @@ while running == False:
                         sat.new_link(index)
                         if ALGORITHM != "OPSPF" and ALGORITHM != "OPSF":
                             for fail_experience in sat.fail_experiences[index]:
-                                recovery_flood(sat, index)
+                                detour_table = recovery_flood(sat, index, detour_table)
 
                         # sat.protect_timer[index] += PROTECT_TIME
                         # if sat not in protect_sat_array:
@@ -844,7 +845,7 @@ while running == False:
             if 0 not in sat.link_state:
                 if sat.id in routing_table:
                     routing_table.remove(sat.id)
-                pat_sat_array.remove(sat)
+                pat_sat_array.discard(sat)
 
         # sleep(0.2)
         # 공전
@@ -865,7 +866,7 @@ while running == False:
         #         g.reset_connections()
         #         g.connect_satellites(constellations[0])
         if time % 100 == 0:
-            simulator.random_N_to_M_simulation(50)
+            simulator.random_N_to_M_simulation(10)
             # print(len(simulator.network.log))
         # if time % 40000 == 0:
         #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
