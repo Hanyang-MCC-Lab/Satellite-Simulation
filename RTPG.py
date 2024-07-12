@@ -1,4 +1,4 @@
-import math
+from math import radians, asin, pi, sin, atan, cos, tan
 
 from parameter import DELTA_PI, DELTA_OMEGA, S_NUM, O_NUM, PHASING_PARAMETER, G_SEARCH_REGION_RADIUS, CONST_EARTH_RADIUS, EXTRA_P
 
@@ -39,7 +39,6 @@ def shift_array(arr):
 
 
 def minimum_hop_estimate(src, dst):
-    pi = math.pi
     p_s, p_d, r_s, r_d = src.p, dst.p, src.r, dst.r
     # print("src:", p_s, r_s)
     # print("dst:", p_d, r_d)
@@ -50,7 +49,7 @@ def minimum_hop_estimate(src, dst):
         horizontal = -1*left
     else:
         horizontal = right
-    sum_of_delta_f = math.radians((360*(PHASING_PARAMETER / (S_NUM*O_NUM))) * horizontal)
+    sum_of_delta_f = radians((360*(PHASING_PARAMETER / (S_NUM*O_NUM))) * horizontal)
     u_after_horizontal_move = src.true_anomaly+sum_of_delta_f if src.true_anomaly+sum_of_delta_f >= pi/2 else src.true_anomaly+sum_of_delta_f+(pi*2)
     r_after_horizontal_move = int((u_after_horizontal_move - pi/2)//DELTA_PI)
     # print(r_after_horizontal_move)
@@ -64,12 +63,11 @@ def minimum_hop_estimate(src, dst):
     return horizontal, vertical
 
 def coordinates_of_ground_station(lat, lon, inc):
-    pi = math.pi
-    u_ascending = math.asin(math.sin(lat)/math.sin(inc))
+    u_ascending = asin(sin(lat)/sin(inc))
     u_descending = (lat/abs(lat))*pi - u_ascending
 
-    ksi_asc = math.atan(math.cos(inc)*math.tan(u_ascending))
-    ksi_desc = math.atan(math.cos(inc)*math.tan(u_descending)) + pi
+    ksi_asc = atan(cos(inc)*tan(u_ascending))
+    ksi_desc = atan(cos(inc)*tan(u_descending)) + pi
 
     virtual_long_asc = (lon - ksi_asc + 2*pi) % (2*pi)
     virtual_long_desc = (lon - ksi_desc + 2*pi) % (2*pi)
@@ -86,11 +84,10 @@ def coordinates_of_ground_station(lat, lon, inc):
     return int(p_asc), int(r_asc), int(p_desc), int(r_desc)
 
 def grid_search_region(lat, lon, inc):
-    pi = math.pi
 
-    delta_p = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*math.cos(lat)*DELTA_OMEGA)+EXTRA_P)
+    delta_p = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*cos(lat)*DELTA_OMEGA)+EXTRA_P)
 
-    h_min = inc - math.asin(math.sin(inc) * math.sin(pi / 2 - 2 * pi / S_NUM * (S_NUM - 1)))
+    h_min = inc - asin(sin(inc) * sin(pi / 2 - 2 * pi / S_NUM * (S_NUM - 1)))
     delta_r = 2*round((G_SEARCH_REGION_RADIUS)/(CONST_EARTH_RADIUS*h_min))
 
     return delta_p, delta_r
