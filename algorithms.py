@@ -1,7 +1,8 @@
-import math
+
 import random
 from time import sleep
 from RTPG import minimum_hop_estimate
+from math import sqrt, acos, degrees, radians, sin, cos, atan2
 from vpython import vec, color
 
 
@@ -12,61 +13,6 @@ def latitude_convert(degree):
         return degree - 360
     else:
         return degree
-
-
-def get_minimum_hop_region(source, destination, max_orbit_num, max_sat_num, constellation):
-    src_info, dest_info = source.get_sat_info(), destination.get_sat_info()
-    south_distance = ((src_info["satellite"] - dest_info["satellite"]) + max_sat_num) % max_sat_num
-    north_distance = ((dest_info["satellite"] - src_info["satellite"]) + max_sat_num) % max_sat_num
-    west_distance = ((src_info["orbit"] - dest_info["orbit"]) + max_orbit_num) % max_orbit_num
-    east_distance = ((dest_info["orbit"] - src_info["orbit"]) + max_orbit_num) % max_orbit_num
-    orbit_range, sat_range = [], []
-    src_sat, src_orbit = 0, 0
-    dest_sat, dest_orbit = 0, 0
-    # 좌 / 우
-    if west_distance <= east_distance:  # 오른쪽으로 이동
-        if src_info["orbit"] < dest_info["orbit"]:  # 오른쪽으로 가는데 중간에 0이 있음
-            orbit_range = list(range(dest_info["orbit"], max_orbit_num)) + list(
-                range(src_info["orbit"] + 1))
-        else:  # 오른쪽으로 가는데 중간에 0이 없음
-            orbit_range = list(range(dest_info["orbit"], src_info["orbit"] + 1))
-        src_orbit, dest_orbit = len(orbit_range) - 1, 0
-    else:  # 왼쪽으로 이동
-        if src_info["orbit"] > dest_info["orbit"]:  # 왼쪽으로 가는데 중간에 0이 있음
-            orbit_range = list(range(src_info["orbit"], max_orbit_num)) + list(
-                range(dest_info["orbit"] + 1))
-        else:  # 왼쪽으로 가는데 중간에 0이 없음
-            orbit_range = list(range(src_info["orbit"], dest_info["orbit"] + 1))
-        src_orbit, dest_orbit = 0, len(orbit_range) - 1
-
-    # 상 / 하
-    if north_distance <= south_distance:  # 북으로 감
-        if src_info["satellite"] > dest_info["satellite"]:  # 북으로 가는데 중간에 0이 있음
-            sat_range = list(range(dest_info["satellite"], -1, -1)) + list(
-                range(max_sat_num - 1, src_info["satellite"] - 1, -1))
-        else:  # 북으로 가는데 중간에 0이 없음
-            sat_range = list(range(dest_info["satellite"], src_info["satellite"] - 1, -1))
-        src_sat, dest_sat = len(sat_range) - 1, 0
-    else:  # 남으로 감
-        if src_info["satellite"] < dest_info["satellite"]:  # 남으로 가는데 중간에 0이 있음
-            sat_range = list(range(src_info["satellite"], -1, -1)) + list(
-                range(max_sat_num - 1, dest_info["satellite"] - 1, -1))
-        else:  # 남으로 가는데 중간에 0이 없음
-            sat_range = list(range(src_info["satellite"], dest_info["satellite"] - 1, -1))
-        src_sat, dest_sat = 0, len(sat_range) - 1
-
-    mhr = []
-    # print(orbit_range)
-    # print(sat_range)
-    # print("src: ", src_orbit, src_sat)
-    # print("dst: ", dest_orbit, dest_sat)
-    for i in sat_range:
-        temp = []
-        for j in orbit_range:
-            temp.append(constellation[j].satellites[i])
-        mhr.append(temp)
-
-    return mhr, src_sat, src_orbit, dest_sat, dest_orbit
 
 
 def new_mhr(source, destination, constellation):
@@ -179,133 +125,134 @@ def get_optimal_row_line(s_r, d_r, vertical):
     return optimal
 
 
-def distributed_detour_routing(constellation, mhr, src_sat, src_orbit, dest_sat, dest_orbit, src, dest):
-    # print(src.id, "to", dest.id)
-    opt_line = get_optimal_row_line(mhr, src_sat, dest_sat)
-    need_flood = False
-    path = []
-    fail_info = []
-    fail_history = []
-    overhead_signal = 0
-    # print("===MHR===")
-    # for i in mhr:
-    #     for j in i:
-    #         print(j.id, end=" ")
-    #     print()
-    # print("length", len(mhr))
-    dest_info = dest.get_llh_info()
-    cur_sat, cur_orbit = src_sat, src_orbit
-    while cur_sat != dest_sat or cur_orbit != dest_orbit:  # 경로의 마지막이 destination일 때까지
-        # sleep(0.1)
-        success = True
-        path.append(mhr[cur_sat][cur_orbit])
-        cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
-        cur_id = mhr[cur_sat][cur_orbit].id
-        first_direction, second_direction = new_get_direction(cur_orbit, dest_orbit, cur_sat, dest_sat, src_sat,
-                                                              opt_line)
-        # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
-        # print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
-        # print("current:", cur_sat, cur_orbit)
-        if second_direction is None:
-            direction = first_direction
-        else:
-            if dest.id in mhr[cur_sat][cur_orbit].detourTable:
-                # detour table에 의한 라우팅
-                # ####### debugging print ########
-                # print(cur_id, "has a direction in its detour table!")
-                direction = second_direction
-            else:
-                # 일반 라우팅
-                direction = first_direction
-                if (prev_dir == "up" and direction == "down") or (prev_dir == "down" and direction == "up"):
-                    direction = second_direction
-
-            if (direction == "left" and mhr[cur_sat][cur_orbit].link_state[0] == 0) or (
-                    direction == "right" and mhr[cur_sat][cur_orbit].link_state[1] == 0):
-                success = False
-            else:
-                success = True
-
-            if need_flood:
-                flood_return = selective_flood(mhr, src_sat, src_orbit, cur_sat, cur_orbit, dest, direction)
-                overhead_signal += len(flood_return[0])
-                fail_info[-1][0].fail_experiences[0 if direction == "left" else 1].append(flood_return)
-                need_flood = False
-
-        # step2. 성공/실패에 따른 알고리즘 분리
-        if success:  # 성공
-            if direction == "up":
-                cur_sat -= 1
-            elif direction == "down":
-                cur_sat += 1
-            elif direction == "left":
-                cur_orbit -= 1
-            else:  # direction == "right"
-                cur_orbit += 1
-
-            prev_dir = direction
-        else:  # 실패
-            # print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
-            need_flood = True
-            fail_history.append((cur_sat, cur_orbit))
-            fail_pair = [mhr[cur_sat][cur_orbit]]
-
-            if direction == "left":
-                fail_pair.append(mhr[cur_sat][cur_orbit - 1])
-            else:
-                fail_pair.append(mhr[cur_sat][cur_orbit + 1])
-            fail_info.append(fail_pair)
-            fail_pair[-1].should_notice_recovery = True
-
-            direction = second_direction
-            cur_sat += 1 if direction == "down" else -1
-
-            if cur_sat >= len(mhr) or cur_sat < 0:
-                mhr = extend_mhr(mhr, direction)
-                if direction == "up":  # 위로 확장됨에 따른 src_sat, dest_sat, fail_sat 수정
-                    cur_sat += 1
-                    src_sat += 1
-                    dest_sat += 1
-                # opt_line = cur_sat
-                # print("extending mhr")
-                # print("===MHR===")
-                # print(mhr)
-                # for i in mhr:
-                #     for j in i:
-                #         print(j.id, end=" ")
-                #     print()
-            # print("move instantly to", mhr[cur_sat][cur_orbit].id)
-    path.append(mhr[cur_sat][cur_orbit])
-
-    # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
-    return path, fail_info, overhead_signal
+# def distributed_detour_routing(constellation, detour_table, src_sat, src_orbit, dest_sat, dest_orbit, src, dest):
+#     # print(src.id, "to", dest.id)
+#     opt_line = new_get_direction(src.r,)get_optimal_row_line(mhr, src_sat, dest_sat)
+#     need_flood = False
+#     path = []
+#     fail_info = []
+#     fail_history = []
+#     overhead_signal = 0
+#     # print("===MHR===")
+#     # for i in mhr:
+#     #     for j in i:
+#     #         print(j.id, end=" ")
+#     #     print()
+#     # print("length", len(mhr))
+#     dest_info = dest.get_llh_info()
+#     cur_sat, cur_orbit = src_sat, src_orbit
+#     while cur_sat != dest_sat or cur_orbit != dest_orbit:  # 경로의 마지막이 destination일 때까지
+#         # sleep(0.1)
+#         success = True
+#         path.append(mhr[cur_sat][cur_orbit])
+#         cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
+#         cur_id = mhr[cur_sat][cur_orbit].id
+#         first_direction, second_direction = new_get_direction(cur_orbit, dest_orbit, cur_sat, dest_sat, src_sat,
+#                                                               opt_line)
+#         # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
+#         # print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
+#         # print("current:", cur_sat, cur_orbit)
+#         if second_direction is None:
+#             direction = first_direction
+#         else:
+#             if dest.id in detour_table[(cur_sat, cur_orbit)]:
+#                 # detour table에 의한 라우팅
+#                 # ####### debugging print ########
+#                 # print(cur_id, "has a direction in its detour table!")
+#                 direction = second_direction
+#             else:
+#                 # 일반 라우팅
+#                 direction = first_direction
+#                 if (prev_dir == "up" and direction == "down") or (prev_dir == "down" and direction == "up"):
+#                     direction = second_direction
+#
+#             if (direction == "left" and mhr[cur_sat][cur_orbit].link_state[0] == 0) or (
+#                     direction == "right" and mhr[cur_sat][cur_orbit].link_state[1] == 0):
+#                 success = False
+#             else:
+#                 success = True
+#
+#             if need_flood:
+#                 flood_return = selective_flood(mhr, src_sat, src_orbit, cur_sat, cur_orbit, dest, direction)
+#                 overhead_signal += len(flood_return[0])
+#                 fail_info[-1][0].fail_experiences[0 if direction == "left" else 1].append(flood_return)
+#                 need_flood = False
+#
+#         # step2. 성공/실패에 따른 알고리즘 분리
+#         if success:  # 성공
+#             if direction == "up":
+#                 cur_sat -= 1
+#             elif direction == "down":
+#                 cur_sat += 1
+#             elif direction == "left":
+#                 cur_orbit -= 1
+#             else:  # direction == "right"
+#                 cur_orbit += 1
+#
+#             prev_dir = direction
+#         else:  # 실패
+#             # print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
+#             need_flood = True
+#             fail_history.append((cur_sat, cur_orbit))
+#             fail_pair = [mhr[cur_sat][cur_orbit]]
+#
+#             if direction == "left":
+#                 fail_pair.append(mhr[cur_sat][cur_orbit - 1])
+#             else:
+#                 fail_pair.append(mhr[cur_sat][cur_orbit + 1])
+#             fail_info.append(fail_pair)
+#             fail_pair[-1].should_notice_recovery = True
+#
+#             direction = second_direction
+#             cur_sat += 1 if direction == "down" else -1
+#
+#             if cur_sat >= len(mhr) or cur_sat < 0:
+#                 mhr = extend_mhr(mhr, direction)
+#                 if direction == "up":  # 위로 확장됨에 따른 src_sat, dest_sat, fail_sat 수정
+#                     cur_sat += 1
+#                     src_sat += 1
+#                     dest_sat += 1
+#                 # opt_line = cur_sat
+#                 # print("extending mhr")
+#                 # print("===MHR===")
+#                 # print(mhr)
+#                 # for i in mhr:
+#                 #     for j in i:
+#                 #         print(j.id, end=" ")
+#                 #     print()
+#             # print("move instantly to", mhr[cur_sat][cur_orbit].id)
+#     path.append(mhr[cur_sat][cur_orbit])
+#
+#     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
+#     return path, fail_info, overhead_signal, detour_table
     # return path
 
 
-def selective_flood(mhr, src_sat, src_orbit, fail_sat, fail_orbit, destination, sec_direction):
+def selective_flood(detour_table, src_sat, src_orbit, fail_sat, fail_orbit, destination, sec_direction):
     # 진행 경우, 1. inter-intra, 2. intra-inter, 3. intra-inter-intra
     # print(sec_direction)
     flood_path = []
+    d_id = destination.id
     flood_direction = {"down": (-1, 0), "up": (1, 0), "right": (0, -1), "left": (0, 1)}
     csat, corb = fail_sat, fail_orbit
     dsat, dorb = flood_direction[sec_direction]
-
-    mhr[csat][corb].detourTable[destination.id] = sec_direction
-    flood_path.append(mhr[csat][corb])
-    while csat != src_sat and corb != src_orbit:
-        csat, corb = csat + dsat, corb + dorb
-        try:
-            mhr[csat][corb].detourTable[destination.id] = sec_direction
-        except IndexError:
-            print(f'detour point: {fail_sat}, {fail_orbit} sec_direction: {sec_direction}')
-            print(f'index error: {csat}, {corb}')
-            print("===MHR===")
-            print(mhr)
-            for i in mhr:
-                for j in i:
-                    print(j.id, end=" ")
-                print()
-        flood_path.append(mhr[csat][corb])
+    #
+    # detour_table[(csat, corb)].add(d_id)
+    # flood_path.append(mhr[csat][corb])
+    # while csat != src_sat and corb != src_orbit:
+    #     csat, corb = csat + dsat, corb + dorb
+    #     try:
+    #         mhr[csat][corb].detourTable.add(d_id)
+    #     except IndexError:
+    #         print(f'detour point: {fail_sat}, {fail_orbit} sec_direction: {sec_direction}')
+    #         print(f'index error: {csat}, {corb}')
+    #         print("===MHR===")
+    #         print(mhr)
+    #         for i in mhr:
+    #             for j in i:
+    #                 print(j.id, end=" ")
+    #             print()
+    #     flood_path.append(mhr[csat][corb])
 
     # print("flood path: ", end="")
     # for fsat in flood_path:
@@ -315,145 +262,26 @@ def selective_flood(mhr, src_sat, src_orbit, fail_sat, fail_orbit, destination, 
     return [flood_path, destination.id]
 
 
-def recovery_flood(sat, index):
+def recovery_flood(sat, index, detour_table):
     for flood_path in sat.fail_experiences[index]:
-        dest = flood_path[1]
+        d_id = flood_path[1]
         for i in flood_path[0]:
             # print(dest, i.detourTable)
-            if dest in i.detourTable:
-                i.detourTable.remove(dest)
-
-
-def TEW(sat, cur_info, dest_info, orbitNum, satNum):
-    # 이전 알고리즘 : 8방향
-    horizontal, vertical = 0, 0
-    # 왼쪽 & 오른쪽 방향선택
-    west_distance = ((cur_info["orbit"] - dest_info["orbit"]) + orbitNum) % orbitNum
-    east_distance = ((dest_info["orbit"] - cur_info["orbit"]) + orbitNum) % orbitNum
-    if west_distance <= east_distance and west_distance != 0:
-        horizontal = -1
-    elif west_distance > east_distance:
-        horizontal = 1
-    # 위 & 아래 방향선택
-    south_distance = ((cur_info["satellite"] - dest_info["satellite"]) + satNum) % satNum
-    north_distance = ((dest_info["satellite"] - cur_info["satellite"]) + satNum) % satNum
-    if north_distance <= south_distance and north_distance != 0:
-        vertical = 1
-    elif north_distance > south_distance:
-        vertical = -1
-    # 적합한 위성 리턴
-    right, left = ((cur_info["orbit"] + 1) + orbitNum) % orbitNum, ((cur_info["orbit"] - 1) + orbitNum) % orbitNum
-    up, down = ((cur_info["satellite"] + 1) + satNum) % satNum, ((cur_info["satellite"] - 1) + satNum) % satNum
-    if vertical > 0:
-        # if horizontal > 0:  # 위로, 동으로!!
-        #     return sat.orbit.orbits[right].satellites[up]
-        # elif horizontal < 0:  # 위로, 서로!!
-        #     return sat.orbit.orbits[left].satellites[up]
-        # else:  # 위로
-        return sat.orbit.orbits[cur_info["orbit"]].satellites[up]
-
-    elif vertical < 0:
-        # if horizontal > 0:  # 아래로, 동으로!!
-        #     return sat.orbit.orbits[right].satellites[down]
-        # elif horizontal < 0:  # 아래로, 서로!!
-        #     return sat.orbit.orbits[left].satellites[down]
-        # else:  # 아래로
-        return sat.orbit.orbits[cur_info["orbit"]].satellites[down]
-    else:
-        if horizontal > 0:  # 동으로
-            return sat.orbit.orbits[right].satellites[cur_info["satellite"]]
-        else:  # 서로
-            return sat.orbit.orbits[left].satellites[cur_info["satellite"]]
-
-
-def MDD(sat, dest, available_list):
-    print(dest)
-    smallest_distance = float('inf')
-    point_with_smallest_distance = None
-    # print("current sat:", self.id)
-    # print("available list is")
-    for i in available_list:
-        if i.id == dest.id:
-            return i
-        dist = i.get_great_distance(dest)
-        # print(available_list[i].id, "  distance:", dist)
-        if dist < smallest_distance:
-            smallest_distance = dist
-            point_with_smallest_distance = i
-    # print("====================================")
-
-    return point_with_smallest_distance
-
-
-def calculate_vector(point1, point2):
-    if len(point1) != 3 or len(point2) != 3:
-        raise ValueError("Both points must be 3D coordinates.")
-
-    vector = [point2[0] - point1[0], point2[1] - point1[1], point2[2] - point1[2]]
-    return vector
-
+            detour_table[i].discard(d_id)
+    return detour_table
 
 def calculate_angle(vector1, vector2):
     dot_product = sum(v1 * v2 for v1, v2 in zip(vector1, vector2))
-    magnitude1 = math.sqrt(sum(v1 ** 2 for v1 in vector1))
-    magnitude2 = math.sqrt(sum(v2 ** 2 for v2 in vector2))
+    magnitude1 = sqrt(sum(v1 ** 2 for v1 in vector1))
+    magnitude2 = sqrt(sum(v2 ** 2 for v2 in vector2))
     cosine_similarity = dot_product / (magnitude1 * magnitude2)
 
     # Ensure the value is within the valid range for acos ([-1, 1])
     cosine_similarity = min(max(cosine_similarity, -1), 1)
 
-    angle_in_radians = math.acos(cosine_similarity)
-    angle_in_degrees = math.degrees(angle_in_radians)
+    angle_in_radians = acos(cosine_similarity)
+    angle_in_degrees = degrees(angle_in_radians)
     return angle_in_degrees
-
-
-def MDA(sat, dest, available_list):
-    src_ecef = sat.get_ecef_info()
-    dest_ecef = dest.get_ecef_info()
-    smallest_angle = float('inf')
-    point_with_smallest_angle = None
-
-    vector = calculate_vector(src_ecef, dest_ecef)
-
-    for i in available_list:
-        vector2 = calculate_vector(src_ecef, i.get_ecef_info())
-        angle = calculate_angle(vector, vector2)
-
-        if angle < smallest_angle:
-            smallest_angle = angle
-            point_with_smallest_angle = i
-
-    return point_with_smallest_angle
-
-
-def get_distance_with_lon_and_lat(a_lon, a_lat, b_lon, b_lat):
-    lon_node_A = math.radians(a_lon)
-    lat_node_A = math.radians(a_lat)
-    lon_node_B = math.radians(b_lon)
-    lat_node_B = math.radians(b_lat)
-
-    dlon = lon_node_B - lon_node_A
-    dlat = lat_node_B - lat_node_A
-
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat_node_A) * math.cos(lat_node_B) * math.sin(dlon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    distance = (6371 + 550) * c
-    return distance
-
-
-def get_nearest_sat(s_lon, s_lat, constellation):
-    min_dist = float('inf')
-    nearest = None
-    for orbits in constellation:
-        for orbit in orbits:
-            for sat in orbit.satellites:
-                llh = sat.get_llh_info()
-                temp = get_distance_with_lon_and_lat(s_lon, s_lat, llh["lon"], llh["lat"])
-                if min_dist > temp:
-                    nearest = sat
-                    min_dist = temp
-
-    return nearest
 
 
 def new_get_direction(cur_r, vertical, horizontal, opt_line):
@@ -470,52 +298,28 @@ def new_get_direction(cur_r, vertical, horizontal, opt_line):
     return first, second
 
 
-def get_direction(cur_orbit, dest_orbit, src_orbit, cur_sat, dest_sat, src_sat, opt_line):
-    if cur_orbit != dest_orbit and \
-            ((cur_sat == opt_line) or (dest_sat <= cur_sat < opt_line) or (opt_line < cur_sat <= dest_sat)):
-        # ((src_sat <= dest_sat < cur_sat) or (cur_sat < dest_sat <= src_sat)) or
-        # ((dest_sat <= src_sat < cur_sat) or (cur_sat < src_sat <= dest_sat))):
-        if cur_orbit > dest_orbit:
-            direction = "left"
-        else:
-            direction = "right"
-    else:
-        if cur_sat > dest_sat:
-            direction = "up"
-        else:
-            direction = "down"
-    return direction
-
-
-def n_hop_flood(n, cur, d_id):
-    visited = [d_id]
+def n_hop_flood(n, cur, d_id, detour_table):
+    visited = set()
     flood_path = []
     queue = [cur]
     while n > 0:
         round_arr = []
-        while len(queue) > 0:
-            tar = queue.pop()
-            if tar in visited:
-                pass
-            else:
-                flood_path.append(tar)
-                visited.append(tar)
-                round_arr.append(tar)
-
-        for node in round_arr:
-            if n > 0:
-                for d in ["up", "down", "left", "right"]:
-                    queue.append(node.link[d])
+        while queue:
+            tar = queue.pop(0)
+            if tar not in visited:
+                flood_path.append(tar.id)
+                visited.add(tar)
+                round_arr.extend(tar.link[d] for d in ["up", "down", "left", "right"])
+        queue = round_arr
         n -= 1
 
-        for node in flood_path:
-            if d_id not in node.detourTable:
-                node.detourTable.append(d_id)
+        for id in flood_path:
+            detour_table[id].add(d_id)
 
-    return [flood_path, d_id]
+    return [flood_path, d_id], detour_table
 
 
-def dtdr(src, dest):
+def dtdr(detour_table, src, dest):
     # print(src.id, "to", dest.id)
     detour_log = []
     d_id = dest.id
@@ -530,19 +334,18 @@ def dtdr(src, dest):
     cur = src
     try:
         while cur != dest:  # 경로의 마지막이 destination일 때까지
-            # sleep(0.1)
+            sleep(0.1)
             success = True
             path.append(cur)
             first_direction, second_direction = new_get_direction(cur.r, vertical, horizontal, opt_line)
-
             # ####### debugging print ########
-            # print("=====", cur.id, "=====")
+            print("=====", cur.id, "=====")
             if second_direction is None:
                 direction = first_direction
             else:
-                if d_id in cur.detourTable:
-                    # ####### debugging print ########
-                    # print(cur_id, "has a direction in its detour table!")
+                if d_id in detour_table[cur.id]:
+                    ####### debugging print ########
+                    print(cur.id, "has a direction in its detour table!")
                     direction = second_direction
                     detour_log.append(cur.id)
                 else: # 일반 라우팅
@@ -561,7 +364,7 @@ def dtdr(src, dest):
                 pass
             else:  # 실패
                 # ####### debugging print ########
-                # print("!!!!! Fail to transmit on", cur.id, "!!!!!")
+                print("!!!!! Fail to transmit on", cur.id, "!!!!!")
                 fail_history.append(cur.id)
                 fail_count += 1
                 fail_sat = cur.link[direction]
@@ -575,9 +378,8 @@ def dtdr(src, dest):
                 else:
                     direction = second_direction
 
-                fail_sat.fail_experiences[0 if direction == "left" else 1].append(
-                    n_hop_flood(flooding_hop, fail_sat, dest)
-                )
+                flood_info, detour_table = n_hop_flood(flooding_hop, fail_sat, d_id, detour_table)
+                fail_sat.fail_experiences[0 if direction == "left" else 1].append(flood_info)
 
             if direction == "up":
                 vertical -= 1
@@ -618,6 +420,7 @@ def dtdr(src, dest):
         print(f'src / dst: {src.id} / {dest.id}')
         print(f'fail_history: {fail_history}')
         print(f'path: {path}')
+
     path.append(cur)
 
     overhead_signal = 0
@@ -626,7 +429,7 @@ def dtdr(src, dest):
     overhead_signal *= fail_count
 
     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
-    return path, fail_count, overhead_signal
+    return path, fail_count, overhead_signal, detour_table
 
 
 def constellation_to_array(matrix):

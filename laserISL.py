@@ -23,7 +23,6 @@ def PAT(sat1, sat2):
     # 4try
     # sat1.laser_azimuth.append(get_azimuth(sat1, sat2))
     sat1.before_inter_sat_vec_arr.append(np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z]))
-    sat1.link_sat.append(sat2)
     ## 2try
     # laser = np.array([sat2.x-sat1.x, sat2.y-sat1.y, sat2.z-sat1.z])
     # sat1.laser_vec.append(laser)
