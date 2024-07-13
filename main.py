@@ -312,14 +312,10 @@ class Packet:
         global routing_table
         global detour_table
         # 최적 위성 탐색
-        if ALGORITHM == "OPSF" or ALGORITHM == "OPSPF":
-            region, s_sat, s_orbit, dst_sat, dst_orbit = constellation_to_array(rtpg.graph), self.src.r, self.src.p, self.dst.r, self.dst.p
-        # else:
-            # minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit = get_minimum_hop_region(self.src, self.dst, orbitNum,satNum, constellations[0])
-            # mhr, s_sat, s_orbit, dst_sat, dst_orbit = new_mhr(self.src, self.dst, constellations[0])
+        region = constellation_to_array(rtpg.graph)
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
         # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(detour_table, self.src, self.dst)
+        self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(region, detour_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
         # self.path, self.fail_info, routing_table, self.overhead_signal = opspf(region, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
 
 
@@ -831,6 +827,7 @@ while running == False:
                         if ALGORITHM != "OPSPF" and ALGORITHM != "OPSF":
                             for fail_experience in sat.fail_experiences[index]:
                                 detour_table = recovery_flood(sat, index, detour_table)
+                            sat.fail_experiences[index].clear()
 
                         # sat.protect_timer[index] += PROTECT_TIME
                         # if sat not in protect_sat_array:
