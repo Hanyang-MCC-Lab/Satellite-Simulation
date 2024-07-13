@@ -327,15 +327,16 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
     d_id = dest.id
     flooding_hop = 2
     horizontal, vertical = minimum_hop_estimate(src, dest)
+    first_direction = "inter" if abs(latitude_convert(src.latitude)) >= abs(latitude_convert(dest.latitude)) else "intra"
     initial_direction = "up" if vertical > 0 else "down"
     path = []
     fail_count = 0
     forever_inter = False
     cur_p, cur_r = src_p, src_r
+    cur = region[cur_r][cur_p]
     try:
         while (cur_p != dest_r) and (cur_r != dest_r):  # 경로의 마지막이 destination일 때까지
             # sleep(0.1)
-            cur = region[cur_r][cur_p]
             path.append(cur)
             # ####### debugging print ########
             # print("=====", cur.id, "=====")
@@ -350,7 +351,7 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
                 else:
                     direction = "left"
             else:
-                if initial_direction == "up": # 상향
+                if first_direction == "intra": # 상향
                     if vertical != 0:
                         if vertical < 0:
                             direction = "down"
@@ -380,33 +381,28 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
                         else:
                             direction = "left"
                     else:
-                        direction = initial_direction # DTDR
+                        direction = initial_direction
                         forever_inter = True
                     # print("======detour=======")
 
             if (direction == "left" and cur.link_state[0] == 0) or (direction == "right" and cur.link_state[1] == 0):
                 # print("*******failure*******")
                 forever_inter = True
-                fail_sat = cur.link[direction]
                 direction = initial_direction
                 flood_info, detour_table = n_hop_flood(flooding_hop, cur, d_id, detour_table)
-                fail_sat.fail_experiences[0 if direction == "left" else 1].append(flood_info)
+                cur.fail_experiences[0 if direction == "left" else 1].append(flood_info)
                 fail_count += 1
 
             if direction == "up":
                 vertical -= 1
-                cur_r -= 1
             elif direction == "down":
                 vertical += 1
-                cur_r += 1
             elif direction == "right":
                 horizontal += 1
-                cur_p += 1
             else:
                 horizontal -= 1
-                cur_p -= 1
 
-            cur_r, cur_p = (cur_r+r_num) % r_num, (cur_p+p_num) % p_num
+            cur = cur.link[direction]
 
         path.append(region[cur_r][cur_p])
 
