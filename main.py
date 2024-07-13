@@ -783,7 +783,7 @@ menu_choice = 0
 veta_results = []
 pat_available = True
 # set_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
-set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
+# set_routing_simulation_result(TOLERABLE_ANGLE_PER_SECOND)
 deploy_starlink()
 constellation = []
 detour_table = {}
@@ -864,8 +864,8 @@ while running == False:
         # if time % 40000 == 0:
         #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
         #     simulator.network.reset()
-        if time % 80000 == 0:
-            print(detour_table)
+        # if time % 80000 == 0:
+        #     print(detour_table)
     running = True
     write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
     # 모든 VPython 객체 제거

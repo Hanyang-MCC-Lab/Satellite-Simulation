@@ -61,7 +61,7 @@ def write_simulation_result(sat1, sat2, direction, gap, time, gamma, distance):
     wr.writerow(row_data)
     f.close()
 
-def set_routing_simulation_result(gamma):
+def set_routing_simulation_result():
     filename = f'./SimulationResult/{ALGORITHM}/{ALGORITHM}result.csv'
     with open(filename, 'w', encoding='utf-8', newline='') as file:
         wr = csv.writer(file)
