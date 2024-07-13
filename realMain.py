@@ -12,7 +12,7 @@ def run_main_py(angle):
     time.sleep(2)  # 재시작 전 약간의 지연 시간 (필요에 따라 조정)
 
 def run_main_py_with_args():
-    with concurrent.futures.ProcessPoolExecutor(max_workers=3) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
         executor.map(run_main_py, TOLERABLE_ANGLE_PER_SECOND)
 
 if __name__ == "__main__":

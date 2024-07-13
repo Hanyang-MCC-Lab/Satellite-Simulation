@@ -322,8 +322,8 @@ def n_hop_flood(n, cur, d_id, detour_table):
 def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
     src, dest = region[src_r][src_p], region[dest_r][dest_p]
     r_num, p_num = len(region), len(region[0])
-    # ####### debugging print ########
-    # print(src.id, "to", dest.id)
+    ####### debugging print ########
+    print(src.id, "to", dest.id)
     d_id = dest.id
     flooding_hop = 2
     horizontal, vertical = minimum_hop_estimate(src, dest)
@@ -332,15 +332,17 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
     path = []
     fail_count = 0
     forever_inter = False
-    cur_p, cur_r = src_p, src_r
-    cur = region[cur_r][cur_p]
+    cur = src
     try:
-        while (cur_p != dest_r) and (cur_r != dest_r):  # 경로의 마지막이 destination일 때까지
-            # sleep(0.1)
+        while 1:  # 경로의 마지막이 destination일 때까지
+            cur_p = cur.p
             path.append(cur)
-            # ####### debugging print ########
-            # print("=====", cur.id, "=====")
-            if horizontal == 0:
+            if cur.id == d_id:
+                break
+            ####### debugging print ########
+            sleep(0.1)
+            print("=====", cur.id, "=====")
+            if cur_p == dest_p:
                 if vertical < 0:
                     direction = "down"
                 else:
@@ -374,7 +376,7 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
                         else:
                             direction = "up"
 
-                if d_id in detour_table[cur.id]:
+            if (cur_p != dest_p) and d_id in detour_table[cur.id]:
                     if direction in ["up", "down"]:
                         if horizontal > 0:
                             direction = "right"
@@ -383,10 +385,10 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
                     else:
                         direction = initial_direction
                         forever_inter = True
-                    # print("======detour=======")
+                    print("======detour=======")
 
             if (direction == "left" and cur.link_state[0] == 0) or (direction == "right" and cur.link_state[1] == 0):
-                # print("*******failure*******")
+                print("*******failure*******")
                 forever_inter = True
                 direction = initial_direction
                 flood_info, detour_table = n_hop_flood(flooding_hop, cur, d_id, detour_table)
@@ -398,13 +400,11 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
             elif direction == "down":
                 vertical += 1
             elif direction == "right":
-                horizontal += 1
-            else:
                 horizontal -= 1
-
+            else:
+                horizontal += 1
             cur = cur.link[direction]
 
-        path.append(region[cur_r][cur_p])
 
     except IndexError:
         print("Index Error==============================")
@@ -419,13 +419,13 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
     for i in range(flooding_hop):
         overhead_signal += 3 ** i
     overhead_signal *= fail_count
-    # print("done==============================")
-    # print(f'rest vertical / horizontal: {vertical} / {horizontal}')
-    # print(f'on routing [{src.id} to {dest.id}]')
-    # print(f'hops: {len(path)}')
-    # print(f'fail counts: {fail_count}')
-    # print(f'path:', '-'.join(sat.id for sat in path))
-    # print("=================================")
+    print("done==============================")
+    print(f'rest vertical / horizontal: {vertical} / {horizontal}')
+    print(f'on routing [{src.id} to {dest.id}]')
+    print(f'hops: {len(path)}')
+    print(f'fail counts: {fail_count}')
+    print(f'path:', '-'.join(sat.id for sat in path))
+    print("=================================")
 
     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
     return path, fail_count, overhead_signal, detour_table
