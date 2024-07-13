@@ -312,11 +312,10 @@ class Packet:
         global routing_table
         global detour_table
         # 최적 위성 탐색
-        region = constellation_to_array(rtpg.graph)
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
         # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
-        self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(region, detour_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
-        # self.path, self.fail_info, routing_table, self.overhead_signal = opspf(region, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
+        # self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(rtpg.graph, detour_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
+        self.path, self.fail_info, routing_table, self.overhead_signal = opspf(rtpg.graph, routing_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
 
 
 class Network:
@@ -723,7 +722,7 @@ satRot = radians(360 / satNum)  # 위성회전각도
 constellations = []
 pat_sat_array = set()
 protect_sat_array = []
-routing_table = []
+routing_table = set()
 ground_stations = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
@@ -835,7 +834,7 @@ while running == False:
                         # print(sat.handover_timer)
             if 0 not in sat.link_state:
                 if sat.id in routing_table:
-                    routing_table.remove(sat.id)
+                    routing_table.discard(sat.id)
                 to_discard.add((si, oi))
         for i in to_discard:
             pat_sat_array.discard(i)
@@ -858,8 +857,8 @@ while running == False:
         #     for g in ground_stations:
         #         g.reset_connections()
         #         g.connect_satellites(constellations[0])
-        if time % 1000 == 0:
-            simulator.random_N_to_M_simulation(10)
+        if time % 100 == 0:
+            simulator.random_N_to_M_simulation(50)
             # print(len(simulator.network.log))
         # if time % 40000 == 0:
         #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)

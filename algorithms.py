@@ -447,18 +447,19 @@ def constellation_to_array(matrix):
     return rotated_matrix
 
 
-def is_available(constellation, routing_table, s_orbit, d_orbit, check_line, opt_orbit_direction):
-    do = opt_orbit_direction
-    orbit_num = len(constellation[check_line])
-    temp_orbit = s_orbit
-    while True:
-        if constellation[check_line][temp_orbit].id in routing_table:
-            return False
-        if temp_orbit == d_orbit:
-            break
-        temp_orbit += do
-        temp_orbit = orbit_num - 1 if temp_orbit < 0 else temp_orbit % orbit_num
-    return True
+def is_available(sat, routing_table):
+    # check_orbit = src_p
+    # o_num = len(constellation)
+    # while True:
+    #     check_point = constellation[check_orbit][check_line]
+    #     # sleep(0.1)
+    #     # print(check_point.id, check_point.p, dst_p)
+    #     if check_point.id in routing_table:
+    #         return False
+    #     if check_point.p == dst_p:
+    #         break
+    #     check_orbit = (check_orbit + opt_orbit_direction + o_num) % o_num
+    return sat not in routing_table
 
 
 def best_direction(start, end, sat_num):
@@ -478,163 +479,180 @@ def best_direction(start, end, sat_num):
         return 1
 
 
-def optimal_line(constellation, routing_table, s_sat, s_orbit, d_sat, d_orbit):
-    opt_line = s_sat
-    opt_lat = latitude_convert(constellation[opt_line][0].get_llh_info()["lat"])
-    opt_sat_direction = best_direction(s_sat, d_sat, len(constellation))
-    opt_orbit_direction = best_direction(s_orbit, d_orbit, len(constellation[0]))
+def optimal_line(constellation, routing_table, src_r, src_p, dst_r, dst_p):
+    opt_r = src_r
+    r_range, p_range = len(constellation[0]), len(constellation)
+    opt_lat = latitude_convert(constellation[src_p][opt_r].latitude)
+    opt_sat_direction = best_direction(src_r, dst_r, r_range)
     ds = opt_sat_direction
-    temp_line = s_sat + ds
-    temp_line = len(constellation) - 1 if temp_line < 0 else temp_line % len(constellation)
-    if s_sat == d_sat:
-        opt_line = s_sat
+    temp_r = src_r + ds
+    temp_r = r_range - 1 if temp_r < 0 else temp_r % r_range
+
     while True:
-        temp_lat = latitude_convert(constellation[temp_line][0].get_llh_info()["lat"])
+        temp_lat = latitude_convert(constellation[src_p][temp_r].get_llh_info()["lat"])
         if abs(opt_lat) < abs(temp_lat):
             opt_lat = temp_lat
-            opt_line = temp_line
-        if temp_line == d_sat:
+            opt_r = temp_r
+        if temp_r == dst_r:
             break
-        temp_line += ds
-        temp_line = len(constellation) - 1 if temp_line < 0 else temp_line % len(constellation)
+        temp_r += ds
+        temp_r = r_range - 1 if temp_r < 0 else temp_r % r_range
     # 새로운 opt line 찾아야함
-    if not is_available(constellation, routing_table, s_orbit, d_orbit, opt_line, opt_orbit_direction):
-        return find_next_opt_line(constellation, routing_table, s_sat, s_orbit, d_sat, d_orbit, opt_line,
-                                  opt_orbit_direction, opt_sat_direction)
+    if not is_available(constellation[src_p][opt_r].id, routing_table):
+        return find_next_opt_line(routing_table, constellation[src_p][opt_r])
 
-    return opt_line, opt_orbit_direction, opt_sat_direction
+    return opt_r, opt_sat_direction
 
 
-def find_next_opt_line(constellation, routing_table, s_sat, s_orbit, d_sat, d_orbit, fail_line, opt_orbit_direction,
-                       opt_sat_direction):
-    up, down = -1, 1
-    up_hop_waste, down_hop_waste = 0, 0
-    upper_line, lower_line = fail_line, fail_line
-    exceed = True if fail_line == d_sat else False
-    while not is_available(constellation, routing_table, s_orbit, d_orbit, upper_line, opt_orbit_direction):
-        upper_line += up
-        upper_line = len(constellation) - 1 if upper_line < 0 else upper_line % len(constellation)
-        if opt_sat_direction != up or exceed:
-            up_hop_waste += 1
-        if upper_line == d_sat:
-            exceed = True
-    exceed = True if fail_line == d_sat else False
-    while not is_available(constellation, routing_table, s_orbit, d_orbit, lower_line, opt_orbit_direction):
-        lower_line += down
-        lower_line = len(constellation) - 1 if lower_line < 0 else lower_line % len(constellation)
-        if opt_sat_direction != down or exceed:
-            down_hop_waste += 1
-        if lower_line == d_sat:
-            exceed = True
-    if up_hop_waste == down_hop_waste:
-        if latitude_convert(constellation[upper_line][0].get_llh_info()["lat"]) < latitude_convert(
-                constellation[lower_line][0].get_llh_info()["lat"]):
-            opt_line = lower_line
+def find_next_opt_line(routing_table, cur):
+    up_count, down_count = 1, 1
+    temp_sat = cur.link["up"]
+    while not is_available(temp_sat.id, routing_table):
+        up_count += 1
+        temp_sat = temp_sat.link["up"]
+    latitude_of_upper_sat = latitude_convert(temp_sat.latitude)
+    r_of_upper_sat = temp_sat.r
+
+    temp_sat = cur.link["down"]
+    while not is_available(temp_sat.id, routing_table):
+        down_count += 1
+        temp_sat = temp_sat.link["down"]
+    latitude_of_lower_sat = latitude_convert(temp_sat.latitude)
+    r_of_lower_sat = temp_sat.r
+
+    if up_count == down_count:
+        if latitude_of_lower_sat > latitude_of_upper_sat:
+            opt_r = r_of_lower_sat
+            direction = -1
         else:
-            opt_line = upper_line
-    elif up_hop_waste < down_hop_waste:
-        opt_line = upper_line
+            opt_r = r_of_upper_sat
+            direction = 1
+    elif up_count > down_count:
+        opt_r = r_of_upper_sat
+        direction = 1
     else:
-        opt_line = lower_line
-    new_sat_direction = best_direction(s_sat, opt_line, len(constellation))
+        opt_r = r_of_lower_sat
+        direction = -1
 
-    return opt_line, opt_orbit_direction, new_sat_direction
+    return opt_r, direction
 
 
-def ospf(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit):
+# def ospf(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit):
+#     path = []
+#     fail_info = []
+#     opt_line, orbit_dir, sat_dir, count = optimal_line(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
+#     cur_s, cur_o = s_sat, s_orbit
+#     sat_num, orbit_num = len(constellation), len(constellation[0])
+#     print(f'src: {constellation[s_sat][s_orbit].id}, dst: {constellation[dst_sat][dst_orbit].id}')
+#     # print(f'in array src: {s_orbit}-{s_sat}, dst: {dst_orbit}-{dst_sat}')
+#     # print(f'orbit_dir: {orbit_dir}, sat_dir: {sat_dir}, opt_line: {opt_line}')
+#     re = False
+#
+#     while True:
+#         # sleep(0.2)
+#         if not re:
+#             # print(f'current sat: {constellation[cur_s][cur_o].id}')
+#             # print(f'=================current in array: {cur_o}-{cur_s}=====================')
+#             path.append(constellation[cur_s][cur_o])
+#         else:
+#             re = False
+#         if cur_s == dst_sat and cur_o == dst_orbit:
+#             break
+#             # intra-ISL
+#         if cur_s != opt_line or cur_o == dst_orbit:
+#             cur_s += sat_dir
+#             cur_s = sat_num - 1 if cur_s < 0 else cur_s % sat_num
+#             # inter-ISL
+#         elif cur_s == opt_line:
+#             # inter-ISL success
+#             if constellation[cur_s][cur_o].link_state[0 if orbit_dir == -1 else 1] == 1:
+#                 cur_o += orbit_dir
+#                 cur_o = orbit_num - 1 if cur_o < 0 else cur_o % orbit_num
+#                 if cur_o == dst_orbit:
+#                     sat_dir = best_direction(cur_s, dst_sat, sat_num)
+#             # inter-ISL fail
+#             else:
+#                 # print('fail')
+#                 routing_table.append(constellation[cur_s][cur_o].id)
+#                 fail_info = [constellation[cur_s][cur_o], constellation[cur_s]]
+#                 opt_line, orbit_dir, sat_dir, count = find_next_opt_line(constellation, routing_table, s_orbit, dst_sat,
+#                                                                          dst_orbit, opt_line, orbit_dir, sat_dir)
+#                 # print(f'new orbit_dir: {orbit_dir}, new sat_dir: {sat_dir}, new opt_line: {opt_line}')
+#                 re = True
+#                 continue
+#
+#     # 경로 리턴 path <List<Satellite>>, fail_info => [[에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>][flooding path]]
+#     return path, fail_info, routing_table, 0
+
+
+def opspf(constellation, routing_table, src_p, src_r, dst_p, dst_r):
     path = []
-    fail_info = []
-    opt_line, orbit_dir, sat_dir, count = optimal_line(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
-    cur_s, cur_o = s_sat, s_orbit
-    sat_num, orbit_num = len(constellation), len(constellation[0])
-    print(f'src: {constellation[s_sat][s_orbit].id}, dst: {constellation[dst_sat][dst_orbit].id}')
-    # print(f'in array src: {s_orbit}-{s_sat}, dst: {dst_orbit}-{dst_sat}')
-    # print(f'orbit_dir: {orbit_dir}, sat_dir: {sat_dir}, opt_line: {opt_line}')
-    re = False
-
-    while True:
-        # sleep(0.2)
-        if not re:
-            # print(f'current sat: {constellation[cur_s][cur_o].id}')
-            # print(f'=================current in array: {cur_o}-{cur_s}=====================')
-            path.append(constellation[cur_s][cur_o])
-        else:
-            re = False
-        if cur_s == dst_sat and cur_o == dst_orbit:
-            break
-            # intra-ISL
-        if cur_s != opt_line or cur_o == dst_orbit:
-            cur_s += sat_dir
-            cur_s = sat_num - 1 if cur_s < 0 else cur_s % sat_num
-            # inter-ISL
-        elif cur_s == opt_line:
-            # inter-ISL success
-            if constellation[cur_s][cur_o].link_state[0 if orbit_dir == -1 else 1] == 1:
-                cur_o += orbit_dir
-                cur_o = orbit_num - 1 if cur_o < 0 else cur_o % orbit_num
-                if cur_o == dst_orbit:
-                    sat_dir = best_direction(cur_s, dst_sat, sat_num)
-            # inter-ISL fail
-            else:
-                # print('fail')
-                routing_table.append(constellation[cur_s][cur_o].id)
-                fail_info = [constellation[cur_s][cur_o], constellation[cur_s]]
-                opt_line, orbit_dir, sat_dir, count = find_next_opt_line(constellation, routing_table, s_orbit, dst_sat,
-                                                                         dst_orbit, opt_line, orbit_dir, sat_dir)
-                # print(f'new orbit_dir: {orbit_dir}, new sat_dir: {sat_dir}, new opt_line: {opt_line}')
-                re = True
-                continue
-
-    # 경로 리턴 path <List<Satellite>>, fail_info => [[에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>][flooding path]]
-    return path, fail_info, routing_table, 0
-
-
-def opspf(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit):
-    path = []
-    fail_info = []
     fail_count = 0
-    opt_line, orbit_dir, sat_dir = optimal_line(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
-    cur_s, cur_o = s_sat, s_orbit
-    sat_num, orbit_num = len(constellation), len(constellation[0])
-    # print(f'src: {constellation[s_sat][s_orbit].id}, dst: {constellation[dst_sat][dst_orbit].id}')
+    opt_r, sat_dir = optimal_line(constellation, routing_table, src_r, src_p, dst_r, dst_p)
+    src, dest = constellation[src_p][src_r], constellation[dst_p][dst_r]
+    d_id = dest.id
+    horizontal, vertical  = minimum_hop_estimate(src, dest)
+    cur_r, cur_p = src_r, src_p
+    cur = constellation[src_p][src_r]
+    first_direction = "inter" if cur_r == opt_r else "intra"
+
+    sat_num, orbit_num = len(constellation[0]), len(constellation)
+    # print(f'+++++++++src: {constellation[src_p][src_r].id}, dst: {constellation[dst_p][dst_r].id}++++++++')
     # print(f'in array src: {s_orbit}-{s_sat}, dst: {dst_orbit}-{dst_sat}')
     # print(f'orbit_dir: {orbit_dir}, sat_dir: {sat_dir}, opt_line: {opt_line}')
-    re = False
 
     while True:
         # sleep(0.2)
-        if not re:
-            # print(f'current sat: {constellation[cur_s][cur_o].id}')
-            # print(f'=================current in array: {cur_o}-{cur_s}=====================')
-            path.append(constellation[cur_s][cur_o])
-        else:
-            re = False
-        if cur_s == dst_sat and cur_o == dst_orbit:
+        path.append(cur)
+        # print(f'===========cur : {cur.id}==========')
+        # print(f'===ver/hor : {vertical} / {horizontal} ==========')
+        if cur.id == d_id:
             break
             # intra-ISL
-        if cur_s != opt_line or cur_o == dst_orbit:
-            cur_s += sat_dir
-            cur_s = sat_num - 1 if cur_s < 0 else cur_s % sat_num
+        if cur_p == dst_p:
+            direction = "down" if vertical < 0 else "up"
             # inter-ISL
-        elif cur_s == opt_line:
-            # inter-ISL success
-            if constellation[cur_s][cur_o].link_state[0 if orbit_dir == -1 else 1] == 1:
-                cur_o += orbit_dir
-                cur_o = orbit_num - 1 if cur_o < 0 else cur_o % orbit_num
-                if cur_o == dst_orbit:
-                    sat_dir = best_direction(cur_s, dst_sat, sat_num)
-            # inter-ISL fail
+        else:
+            if first_direction == "intra":
+                direction = "down" if sat_dir < 0 else "up"
             else:
-                # print('fail')
-                routing_table.append(constellation[cur_s][cur_o].id)
-                fail_count += 1
-                fail_info.append([constellation[cur_s][cur_o], constellation[cur_s][cur_o]])
-                opt_line, orbit_dir, sat_dir = find_next_opt_line(constellation, routing_table, s_sat, s_orbit, dst_sat,
-                                                                  dst_orbit, opt_line, orbit_dir, sat_dir)
-                # print(f'new orbit_dir: {orbit_dir}, new sat_dir: {sat_dir}, new opt_line: {opt_line}')
-                re = True
-                continue
+                if cur.id in routing_table:
+                    # print("======detour=======")
+                    opt_r, sat_dir = find_next_opt_line(routing_table, cur)
+                    direction = "down" if sat_dir < 0 else "up"
+                    first_direction = "intra"
+                else:
+                    # inter-ISL success
+                    if cur.link_state[0 if horizontal < 0 else 1] == 1:
+                        direction = "left" if horizontal < 0 else "right"
+                    # inter-ISL fail
+                    else:
+                        # print('fail')
+                        first_direction = "intra"
+                        routing_table.add(cur.id)
+                        # print(routing_table)
+                        fail_count += 1
+                        # print(f'before opt line: {opt_r}')
+                        opt_r, sat_dir = find_next_opt_line(routing_table, cur)
+                        # print(f'after opt line: {opt_r}')
+                        # print(f'new orbit_dir: {orbit_dir}, new sat_dir: {sat_dir}, new opt_line: {opt_line}')
+                        direction = "down" if sat_dir < 0 else "up"
+
+        if direction == "up":
+            vertical -= 1
+        elif direction == "down":
+            vertical += 1
+        elif direction == "right":
+            horizontal -= 1
+        else:
+            horizontal += 1
+
+        cur = cur.link[direction]
+        cur_p, cur_r = cur.p, cur.r
+        if cur_r == opt_r:
+            first_direction = "inter"
+
     overhead_signal = fail_count * sat_num * orbit_num * 3
 
     # 경로 리턴 path <List<Satellite>>, fail_info => [[에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>][flooding path]]
-    return path, fail_info, routing_table, overhead_signal
+    return path, fail_count, routing_table, overhead_signal
