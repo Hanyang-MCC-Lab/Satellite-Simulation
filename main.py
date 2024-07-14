@@ -7,6 +7,7 @@ import vpython
 from tqdm import tqdm
 from KNBG import connect_sat_ground
 from RTPG import *
+from algorithmsWithGround import ddr_with_ground, dtdr_with_ground, opspf_with_ground
 from laserISL import *
 from util import *
 
@@ -21,7 +22,6 @@ import random
 import threading
 from algorithms import *
 import detourTable
-
 
 
 class Orbit:
@@ -43,7 +43,7 @@ class Orbit:
         self.inclination = inclination
         self.lon_of_ascending = lon_of_ascending
         self.semi_major_axis = CONST_EARTH_RADIUS
-        self.phasing_radian = radians(360*(PHASING_PARAMETER / (orbitNum*satNum)) * index)
+        self.phasing_radian = radians(360 * (PHASING_PARAMETER / (orbitNum * satNum)) * index)
         # 궤도 회전 -1을 넣은 이유는 45~47번 코드를 주석해제해서 실행시켜보면 궤도가 xz평면기준으로 반대로 되어있었음을 알 수 있음
         self.orbit_attr = ring(pos=vec(0, 0, 0), opacity=0.15,
                                axis=vec(-1 * sin(inclination) * cos(lon_of_ascending),
@@ -52,7 +52,7 @@ class Orbit:
                                color=color, thickness=15, radius=self.semi_major_axis + altitude, )
         # 위성 배치
         for idx in range(satNum):
-            sat = Satellite(self, idx, inclination, altitude, (idx * satRot + self.phasing_radian) % (2*pi))
+            sat = Satellite(self, idx, inclination, altitude, (idx * satRot + self.phasing_radian) % (2 * pi))
             self.satellites.append(sat)
 
     def get_orbit_info(self):
@@ -86,17 +86,18 @@ class Satellite:
         # 위도, 경도
         self.latitude = asin(sin(inclination) * sin(theta))
         self.longitude = ((atan2(cos(inclination) * sin(theta),
-                                     cos(theta))) % (2 * np.pi) + orbit.lon_of_ascending) % (2*pi)
+                                 cos(theta))) % (2 * np.pi) + orbit.lon_of_ascending) % (2 * pi)
         # ECEF 좌표
-        self.x, self.y, self.z = update_ECEF(orbit.inclination, self.true_anomaly, orbit.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
+        self.x, self.y, self.z = update_ECEF(orbit.inclination, self.true_anomaly, orbit.lon_of_ascending,
+                                             self.altitude + CONST_EARTH_RADIUS)
         # 구체 attribute 설정
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=40, color=color.white, up=vec(100, 100, 100))
         # self.distance = sphere(pos=self.sphere_attr.pos, radius=maxDistance, color=color.green, opacity=0.1, visible=False)
         self.check_moving_state()
 
         self.p = self.orbit_index
-        u = self.true_anomaly if self.true_anomaly >= pi/2 else self.true_anomaly+(pi*2)
-        self.r = int((u - pi/2)//DELTA_PI)
+        u = self.true_anomaly if self.true_anomaly >= pi / 2 else self.true_anomaly + (pi * 2)
+        self.r = int((u - pi / 2) // DELTA_PI)
 
     def check_moving_state(self):
         # 상승/하강 상태
@@ -114,8 +115,6 @@ class Satellite:
             self.sphere_attr.radius = 70
         else:
             self.sphere_attr.radius = 40
-
-
 
     def check_link_state(self):
         global pat_available
@@ -155,11 +154,11 @@ class Satellite:
 
     def get_llh_info(self):
         info = {
-                "SAT-ID": self.id,
-                "lon": degrees(self.longitude),
-                "lat": degrees(self.latitude),
-                "alt": self.altitude
-                }
+            "SAT-ID": self.id,
+            "lon": degrees(self.longitude),
+            "lat": degrees(self.latitude),
+            "alt": self.altitude
+        }
         return info
 
     # 위성의 ECEF 좌표를 GET하는 메소드
@@ -174,7 +173,7 @@ class Satellite:
         return info
 
     def new_link(self, index):
-        re_PAT(self, self.link["left" if index==0 else "right"], index)
+        re_PAT(self, self.link["left" if index == 0 else "right"], index)
 
     def refresh(self, dt):
         self.true_anomaly = radians((degrees(self.true_anomaly) + dt) % 360)
@@ -188,11 +187,12 @@ class Satellite:
         self.longitude = self.longitude % (2 * np.pi)
         is_passing_zero *= self.latitude
 
-        u = self.true_anomaly if self.true_anomaly >= pi/2 else self.true_anomaly+(pi*2)
-        self.r = int((u - pi/2)//DELTA_PI)
+        u = self.true_anomaly if self.true_anomaly >= pi / 2 else self.true_anomaly + (pi * 2)
+        self.r = int((u - pi / 2) // DELTA_PI)
 
         # ECEF 좌표
-        self.x, self.y, self.z = update_ECEF(self.inclination, self.true_anomaly, self.lon_of_ascending, self.altitude + CONST_EARTH_RADIUS)
+        self.x, self.y, self.z = update_ECEF(self.inclination, self.true_anomaly, self.lon_of_ascending,
+                                             self.altitude + CONST_EARTH_RADIUS)
         # self.x, self.y, self.z = update_ECEF(self.latitude, self.longitude, self.altitude + CONST_EARTH_RADIUS)
         # 3try
         # for i in range(len(self.link_sat)):
@@ -212,23 +212,24 @@ class Satellite:
 
 
 class GroundStation:
-    id = 0
     def __init__(self, geo_info):
-        self.id = GroundStation.id
-        GroundStation.id += 1
-
         self.latitude = radians(geo_info[0])
         self.longitude = radians(geo_info[1])
         self.x, self.y, self.z = update_ECEF_using_lat_lon(self.latitude, self.longitude, CONST_EARTH_RADIUS)
-        self.p_asc, self.r_asc, self.p_desc, self.r_desc = coordinates_of_ground_station(self.latitude, self.longitude, inclination)
+        self.p_asc, self.r_asc, self.p_desc, self.r_desc = coordinates_of_ground_station(self.latitude, self.longitude,
+                                                                                         inclination)
         self.sphere_attr = sphere(pos=vec(self.y, self.z, self.x), radius=80, color=color.white, up=vec(100, 100, 100))
         self.delta_p, self.delta_r = grid_search_region(self.latitude, self.longitude, inclination)
         self.search_range_asc, self.search_range_desc = self.update_search_range()
-        self.name = f'GS|a{self.p_asc}-{self.r_asc}|d{self.p_desc}-{self.r_desc}'
-        self.connection_area = sphere(pos=vec(self.y, self.z, self.x), radius=G_SEARCH_REGION_RADIUS, color=color.green, up=vec(100, 100, 100), opacity=0.08)
+        self.id = f'GS|a{self.p_asc}-{self.r_asc}|d{self.p_desc}-{self.r_desc}'
+        self.connection_area = sphere(pos=vec(self.y, self.z, self.x), radius=G_SEARCH_REGION_RADIUS, color=color.green,
+                                      up=vec(100, 100, 100), opacity=0.08)
         self.connections = []
 
         self.routing_table = {}
+
+    def get_ecef_info(self):
+        return [self.x, self.y, self.z]
 
     def print_GS_info(self):
         print("=========")
@@ -245,7 +246,7 @@ class GroundStation:
         # print("ground_station:", self.name)
         [horizontal_range_asc, vertical_range_asc] = self.search_range_asc
         [horizontal_range_desc, vertical_range_desc] = self.search_range_desc
-        for p in (horizontal_range_asc+horizontal_range_desc):
+        for p in (horizontal_range_asc + horizontal_range_desc):
             for sat in constellation[p].satellites:
                 radius = calculate_distance_s_to_g(self.latitude, self.longitude, sat.latitude, sat.longitude)
                 # print(elevation)
@@ -257,39 +258,44 @@ class GroundStation:
                         self.connections.append(sat)
                     # ground station link attr
                     # sat.sphere_attr.radius = 70
-                    # sat.sphere_attr.color = color.red
+                    sat.sphere_attr.color = color.purple
 
     def reset_connections(self):
-        for sat in self.connections:
-            sat.link["ground"].remove(self)
+        for s in self.connections:
+            s.link["ground"].remove(self)
 
-        self.connections = []
-
+        self.connections.clear()
 
     def update_search_range(self):
         search_area_asc, search_area_desc = [], []
-        area_left_bound_asc, area_left_bound_desc = int((self.p_asc - self.delta_p/2 + O_NUM) % O_NUM), int((self.p_desc - self.delta_p/2 + O_NUM) % O_NUM)
-        area_right_bound_asc, area_right_bound_desc = int((self.p_asc + self.delta_p/2) % O_NUM), int((self.p_desc + self.delta_p/2) % O_NUM)
-        area_upper_bound_asc, area_upper_bound_desc = int((self.r_asc + self.delta_r/2) % S_NUM), int((self.r_desc + self.delta_r/2) % S_NUM)
-        area_lower_bound_asc, area_lower_bound_desc = int((self.r_asc - self.delta_r/2 + S_NUM) % S_NUM), int((self.r_desc - self.delta_r/2 + S_NUM) % S_NUM)
+        area_left_bound_asc, area_left_bound_desc = int((self.p_asc - self.delta_p / 2 + O_NUM) % O_NUM), int(
+            (self.p_desc - self.delta_p / 2 + O_NUM) % O_NUM)
+        area_right_bound_asc, area_right_bound_desc = int((self.p_asc + self.delta_p / 2) % O_NUM), int(
+            (self.p_desc + self.delta_p / 2) % O_NUM)
+        area_upper_bound_asc, area_upper_bound_desc = int((self.r_asc + self.delta_r / 2) % S_NUM), int(
+            (self.r_desc + self.delta_r / 2) % S_NUM)
+        area_lower_bound_asc, area_lower_bound_desc = int((self.r_asc - self.delta_r / 2 + S_NUM) % S_NUM), int(
+            (self.r_desc - self.delta_r / 2 + S_NUM) % S_NUM)
 
         if area_left_bound_asc < area_right_bound_asc:
-            search_area_asc.append(list(range(area_left_bound_asc, area_right_bound_asc+1)))
+            search_area_asc.append(list(range(area_left_bound_asc, area_right_bound_asc + 1)))
         else:
-            search_area_asc.append(list(range(area_left_bound_asc, O_NUM))+list(range(0, area_right_bound_asc+1)))
+            search_area_asc.append(list(range(area_left_bound_asc, O_NUM)) + list(range(0, area_right_bound_asc + 1)))
         if area_left_bound_desc < area_right_bound_desc:
-            search_area_desc.append(list(range(area_left_bound_desc, area_right_bound_desc+1)))
+            search_area_desc.append(list(range(area_left_bound_desc, area_right_bound_desc + 1)))
         else:
-            search_area_desc.append(list(range(area_right_bound_desc, O_NUM))+list(range(0, area_right_bound_desc+1)))
+            search_area_desc.append(
+                list(range(area_right_bound_desc, O_NUM)) + list(range(0, area_right_bound_desc + 1)))
 
         if area_upper_bound_asc > area_lower_bound_asc:
-            search_area_asc.append(list(range(area_lower_bound_asc, area_upper_bound_asc+1)))
+            search_area_asc.append(list(range(area_lower_bound_asc, area_upper_bound_asc + 1)))
         else:
-            search_area_asc.append(list(range(area_upper_bound_asc, S_NUM))+list(range(0, area_lower_bound_asc+1)))
+            search_area_asc.append(list(range(area_upper_bound_asc, S_NUM)) + list(range(0, area_lower_bound_asc + 1)))
         if area_upper_bound_desc > area_lower_bound_desc:
-            search_area_desc.append(list(range(area_lower_bound_desc, area_upper_bound_desc+1)))
+            search_area_desc.append(list(range(area_lower_bound_desc, area_upper_bound_desc + 1)))
         else:
-            search_area_desc.append(list(range(area_upper_bound_desc, S_NUM))+list(range(0, area_lower_bound_desc+1)))
+            search_area_desc.append(
+                list(range(area_upper_bound_desc, S_NUM)) + list(range(0, area_lower_bound_desc + 1)))
 
         return search_area_asc, search_area_desc
 
@@ -313,9 +319,31 @@ class Packet:
         global detour_table
         # 최적 위성 탐색
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
-        # self.path, self.fail_count, self.overhead_signal, detour_table = distributed_detour_routing(rtpg.graph, detour_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
-        # self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(rtpg.graph, detour_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
-        self.path, self.fail_count, routing_table, self.overhead_signal = opspf(rtpg.graph, routing_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
+        if ALGORITHM == "DDR":
+            self.path, self.fail_count, self.overhead_signal, detour_table = distributed_detour_routing(rtpg.graph,
+                                                                                                        detour_table,
+                                                                                                        self.src.p,
+                                                                                                        self.src.r,
+                                                                                                        self.dst.p,
+                                                                                                        self.dst.r)
+        elif ALGORITHM == "DTDR":
+            self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(rtpg.graph, detour_table, self.src.p,
+                                                                                  self.src.r, self.dst.p, self.dst.r)
+        elif ALGORITHM == "OPSPF":
+            self.path, self.fail_count, routing_table, self.overhead_signal = opspf(constellation, routing_table, self.src.id, self.dst.id)
+        elif ALGORITHM == "DDRwG":
+            self.path, self.fail_count, self.overhead_signal, detour_table = ddr_with_ground(rtpg.graph, detour_table,
+                                                                                                        self.src.p,
+                                                                                                        self.src.r,
+                                                                                                        self.dst.p,
+                                                                                                        self.dst.r)
+        elif ALGORITHM == "DTDRwG":
+            self.path, self.fail_count, self.overhead_signal, detour_table = dtdr_with_ground(rtpg.graph, detour_table, self.src.p,
+                                                                                  self.src.r, self.dst.p, self.dst.r)
+        elif ALGORITHM == "OPSPFwG":
+            self.path, self.fail_count, routing_table, self.overhead_signal = opspf_with_ground(constellation, routing_table,
+                                                                                    self.src.p, self.src.r, self.dst.p,
+                                                                                    self.dst.r)
 
 
 class Network:
@@ -333,7 +361,7 @@ class Network:
     def get_delay(self, node_A: Satellite, node_B: Satellite):
         distance = self.get_euc_distance(node_A, node_B)
         # print(distance)
-        return (distance / 3.0e5)*1000
+        return (distance / 3.0e5) * 1000
 
     def routing(self, start: Satellite, dest: Satellite):
         packet = Packet(start, dest)
@@ -356,6 +384,7 @@ class Network:
         #     "delay": round(delay * 1000, 6),
         #     "path": path,
         # })
+
     def reset(self):
         self.log.clear()
         # self.fail_log.clear()
@@ -416,7 +445,6 @@ class RoutingSimulator:
             sat1 = self.randomSatList[j]
             sat2 = self.randomSatList[int(count) + j]
             self.network.routing(sat1, sat2)
-
 
     # def ground_to_ground_simulation(self):
     #     src, dst = ground_Src(ground_src), ground_Dst(ground_dst)
@@ -629,8 +657,10 @@ def Src(q):
 def Dst(d):
     return d.text
 
+
 def ground_Src(g_src):
     return g_src.text
+
 
 def ground_Dst(g_dst):
     return g_dst.text
@@ -682,8 +712,6 @@ def deploy(inc, axis, color):
     # ground_stations[0].print_GS_info()
 
 
-
-
 def deploy_starlink():
     inclination = radians(float(53))
     altitude = 550
@@ -708,9 +736,12 @@ def deploy_starlink():
 def routing_result_csv():
     write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
 
+
 # 클래스 끝, 메인 로직 시작
 # if __name__=="__main__":
-TOLERABLE_ANGLE_PER_SECOND = float(sys.argv[1:][0])
+# print(sys.argv)
+TOLERABLE_ANGLE_PER_SECOND = float(sys.argv[1])
+ALGORITHM = sys.argv[2] #[1][0]
 TOLERABLE_ANGLE = TOLERABLE_ANGLE_PER_SECOND * (SLOT_DURATION / 1000)
 orbitNum = 72
 satNum = 22
@@ -722,7 +753,6 @@ satRot = radians(360 / satNum)  # 위성회전각도
 constellations = []
 pat_sat_array = set()
 protect_sat_array = []
-routing_table = set()
 ground_stations = []
 
 # 모니터 해상도에 따라 능동적인 해상도 조절
@@ -737,9 +767,9 @@ scene.resizable = False
 
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 #기지국
-# for g_info in GROUND_GEO_INFO:
-#     station = GroundStation(g_info)
-#     ground_stations.append(station)
+for g_info in GROUND_GEO_INFO:
+    station = GroundStation(g_info)
+    ground_stations.append(station)
 
 # for g in ground_stations:
 #     g.print_GS_info()
@@ -786,10 +816,12 @@ pat_available = True
 deploy_starlink()
 constellation = []
 detour_table = {}
+routing_table = {}
 for i in constellations[-1]:
     constellation.append(i.satellites)
     for j in i.satellites:
         detour_table[j.id] = set()
+        routing_table[j.id] = [True, True]
 
 
 # while 1:
@@ -811,7 +843,7 @@ while running == False:
     # print("Running")
 
     # 타이머 & 핸드오버
-    for t in tqdm(range(0, SIMULATION_TIME+1, SLOT_DURATION)):
+    for t in tqdm(range(0, SIMULATION_TIME + 1, SLOT_DURATION)):
         time = t
         to_discard = set()
         for (si, oi) in pat_sat_array:
@@ -827,14 +859,13 @@ while running == False:
                             for fail_experience in sat.fail_experiences[index]:
                                 detour_table = recovery_flood(sat, index, detour_table)
                             sat.fail_experiences[index].clear()
+                        routing_table[sat.id][index] = True
 
                         # sat.protect_timer[index] += PROTECT_TIME
                         # if sat not in protect_sat_array:
                         #     protect_sat_array.append(sat)
                         # print(sat.handover_timer)
             if 0 not in sat.link_state:
-                if sat.id in routing_table:
-                    routing_table.discard(sat.id)
                 to_discard.add((si, oi))
         for i in to_discard:
             pat_sat_array.discard(i)
@@ -854,11 +885,11 @@ while running == False:
         # 기지국
         if time % 600 == 0:
             rtpg.refresh_rtpg()
-        #     for g in ground_stations:
-        #         g.reset_connections()
-        #         g.connect_satellites(constellations[0])
+            for g in ground_stations:
+                g.reset_connections()
+                g.connect_satellites(constellations[0])
         if time % 100 == 0:
-            simulator.random_N_to_M_simulation(100)
+            simulator.random_N_to_M_simulation(50)
             # print(len(simulator.network.log))
         # if time % 40000 == 0:
         #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
@@ -866,7 +897,7 @@ while running == False:
         # if time % 80000 == 0:
         #     print(detour_table)
     running = True
-    write_routing_simulation_result(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
+    write_routing_simulation_result(ALGORITHM, simulator.network.log, TOLERABLE_ANGLE_PER_SECOND)
     # 모든 VPython 객체 제거
     scene.delete()
     vpython.Exit()
@@ -874,5 +905,4 @@ while running == False:
     # 프로그램 종료
     sys.exit(0)
     # if running == True:
-        #     break
-
+    #     break
