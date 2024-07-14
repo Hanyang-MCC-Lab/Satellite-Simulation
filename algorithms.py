@@ -567,13 +567,15 @@ def constellation_to_array(matrix):
 #         can_go = available_hop(temp, routing_table, horizontal)
 #
 #     return opt_r, direction, can_go
-def verify_path(constellation, path, directions):
+def verify_path(path, directions):
     for i in range(len(path) - 1):
         current_node = path[i]
         direction = directions[i]
         # 링크가 끊겨있지 않은지 확인
+        # print(f'current_node: {current_node.id}, direction: {direction}')
+        # print(f'link: {current_node.link}')
         if direction in ["left", "right"]:
-            if current_node.link[direction] == 0:
+            if current_node.link_state[0 if direction == "left" else 1] == 0:
                 return i
     return -1
 
@@ -593,16 +595,18 @@ def opspf(constellation, routing_table, src_id, dest_id):
         new_path.append(constellation[o][s])
     path = new_path
 
-    fail_index = verify_path(constellation, path, directions)
+    fail_index = verify_path(path, directions)
     if fail_index == -1:
         overhead_signal = fail_count * 72 * 22 * 3
         return path, fail_count, routing_table, overhead_signal
     else:
         fail_count += 1
-        routing_table[path[fail_index].id][0 if directions[fail_index] == 'left' else 1] = False
-        child_path, child_fail_count, child_routing_table, child_overhead_signal = opspf(constellation, routing_table, src_id, dest_id)
-        path = path[:fail_index] + child_path
-        fail_count, routing_table, overhead_signal = fail_count+child_fail_count, child_routing_table, overhead_signal+child_overhead_signal
+        fail_sat_id = path[fail_index].id
+        # print("fail sat:", fail_sat_id)
+        routing_table[fail_sat_id][0 if directions[fail_index] == 'left' else 1] = False
+        r_path, r_fail_count, r_routing_table, r_overhead_signal = opspf(constellation, routing_table, fail_sat_id, dest_id)
+        path = path[:fail_index] + r_path
+        fail_count, routing_table, overhead_signal = fail_count+r_fail_count, r_routing_table, overhead_signal+r_overhead_signal
     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
     return path, fail_count, routing_table, overhead_signal
 

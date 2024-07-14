@@ -18,7 +18,7 @@ def run_main_py(args):
 
 def run_main_py_with_args(algorithm):
     args = [(angle, algorithm) for angle in TOLERABLE_ANGLE_PER_SECOND]
-    with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         executor.map(run_main_py, args)
 
 if __name__ == "__main__":

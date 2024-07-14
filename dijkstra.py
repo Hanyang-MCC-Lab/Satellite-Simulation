@@ -8,11 +8,11 @@ def build_link_state_database(nodes, routing_table):
         for node in row:
             n_id = node.id
             lsdb[n_id] = {}
-            if "left" in node.link and routing_table[n_id][0]:
+            if routing_table[n_id][0]:
                 lsdb[n_id][node.link["left"].id] = (dist(node.get_ecef_info(), node.link["left"].get_ecef_info()), "left")
             else:
                 lsdb[n_id][node.link["left"].id] = (float('inf'), "left")
-            if "right" in node.link and routing_table[n_id][1]:
+            if routing_table[n_id][1]:
                 lsdb[n_id][node.link["right"].id] = (dist(node.get_ecef_info(), node.link["right"].get_ecef_info()), "right")
             else:
                 lsdb[n_id][node.link["right"].id] = (float('inf'), "right")
