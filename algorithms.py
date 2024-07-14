@@ -125,141 +125,124 @@ def get_optimal_row_line(s_r, d_r, vertical):
     return optimal
 
 
-# def distributed_detour_routing(constellation, detour_table, src_sat, src_orbit, dest_sat, dest_orbit, src, dest):
-#     # print(src.id, "to", dest.id)
-#     opt_line = new_get_direction(src.r,)get_optimal_row_line(mhr, src_sat, dest_sat)
-#     need_flood = False
-#     path = []
-#     fail_info = []
-#     fail_history = []
-#     overhead_signal = 0
-#     # print("===MHR===")
-#     # for i in mhr:
-#     #     for j in i:
-#     #         print(j.id, end=" ")
-#     #     print()
-#     # print("length", len(mhr))
-#     dest_info = dest.get_llh_info()
-#     cur_sat, cur_orbit = src_sat, src_orbit
-#     while cur_sat != dest_sat or cur_orbit != dest_orbit:  # 경로의 마지막이 destination일 때까지
-#         # sleep(0.1)
-#         success = True
-#         path.append(mhr[cur_sat][cur_orbit])
-#         cur_info = mhr[cur_sat][cur_orbit].get_llh_info()
-#         cur_id = mhr[cur_sat][cur_orbit].id
-#         first_direction, second_direction = new_get_direction(cur_orbit, dest_orbit, cur_sat, dest_sat, src_sat,
-#                                                               opt_line)
-#         # print("=====", mhr[cur_sat][cur_orbit].id, "=====")
-#         # print("cur_sat", cur_sat, "cur_orbit", cur_orbit)
-#         # print("current:", cur_sat, cur_orbit)
-#         if second_direction is None:
-#             direction = first_direction
-#         else:
-#             if dest.id in detour_table[(cur_sat, cur_orbit)]:
-#                 # detour table에 의한 라우팅
-#                 # ####### debugging print ########
-#                 # print(cur_id, "has a direction in its detour table!")
-#                 direction = second_direction
-#             else:
-#                 # 일반 라우팅
-#                 direction = first_direction
-#                 if (prev_dir == "up" and direction == "down") or (prev_dir == "down" and direction == "up"):
-#                     direction = second_direction
-#
-#             if (direction == "left" and mhr[cur_sat][cur_orbit].link_state[0] == 0) or (
-#                     direction == "right" and mhr[cur_sat][cur_orbit].link_state[1] == 0):
-#                 success = False
-#             else:
-#                 success = True
-#
-#             if need_flood:
-#                 flood_return = selective_flood(mhr, src_sat, src_orbit, cur_sat, cur_orbit, dest, direction)
-#                 overhead_signal += len(flood_return[0])
-#                 fail_info[-1][0].fail_experiences[0 if direction == "left" else 1].append(flood_return)
-#                 need_flood = False
-#
-#         # step2. 성공/실패에 따른 알고리즘 분리
-#         if success:  # 성공
-#             if direction == "up":
-#                 cur_sat -= 1
-#             elif direction == "down":
-#                 cur_sat += 1
-#             elif direction == "left":
-#                 cur_orbit -= 1
-#             else:  # direction == "right"
-#                 cur_orbit += 1
-#
-#             prev_dir = direction
-#         else:  # 실패
-#             # print("!!!!! Fail to transmit on", mhr[cur_sat][cur_orbit].id, "!!!!!")
-#             need_flood = True
-#             fail_history.append((cur_sat, cur_orbit))
-#             fail_pair = [mhr[cur_sat][cur_orbit]]
-#
-#             if direction == "left":
-#                 fail_pair.append(mhr[cur_sat][cur_orbit - 1])
-#             else:
-#                 fail_pair.append(mhr[cur_sat][cur_orbit + 1])
-#             fail_info.append(fail_pair)
-#             fail_pair[-1].should_notice_recovery = True
-#
-#             direction = second_direction
-#             cur_sat += 1 if direction == "down" else -1
-#
-#             if cur_sat >= len(mhr) or cur_sat < 0:
-#                 mhr = extend_mhr(mhr, direction)
-#                 if direction == "up":  # 위로 확장됨에 따른 src_sat, dest_sat, fail_sat 수정
-#                     cur_sat += 1
-#                     src_sat += 1
-#                     dest_sat += 1
-#                 # opt_line = cur_sat
-#                 # print("extending mhr")
-#                 # print("===MHR===")
-#                 # print(mhr)
-#                 # for i in mhr:
-#                 #     for j in i:
-#                 #         print(j.id, end=" ")
-#                 #     print()
-#             # print("move instantly to", mhr[cur_sat][cur_orbit].id)
-#     path.append(mhr[cur_sat][cur_orbit])
-#
-#     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
-#     return path, fail_info, overhead_signal, detour_table
-    # return path
+def distributed_detour_routing(region, detour_table, src_p, src_r, dest_p, dest_r):
+    src, dest = region[src_p][src_r], region[dest_p][dest_r]
+    # r_num, p_num = len(region[0]), len(region)
+    ####### debugging print ########
+    # print(src.id, "to", dest.id)
+    d_id = dest.id
+    overhead_signal = 0
+    horizontal, vertical = minimum_hop_estimate(src, dest)
+    first_direction = "inter" if abs(latitude_convert(src.latitude)) >= abs(latitude_convert(dest.latitude)) else "intra"
+    initial_direction = "up" if vertical > 0 else "down"
+    path = []
+    fail_count = 0
+    forever_inter = False
+    cur = src
+    try:
+        while 1:  # 경로의 마지막이 destination일 때까지
+            cur_p = cur.p
+            path.append(cur)
+            if cur.id == d_id:
+                break
+            ####### debugging print ########
+            # sleep(0.1)
+            # print("=====", cur.id, "=====")
+            if cur_p == dest_p:
+                if vertical < 0:
+                    direction = "down"
+                else:
+                    direction = "up"
+            elif forever_inter:
+                if horizontal > 0:
+                    direction = "right"
+                else:
+                    direction = "left"
+            else:
+                if first_direction == "intra": # 상향
+                    if vertical != 0:
+                        if vertical < 0:
+                            direction = "down"
+                        else:
+                            direction = "up"
+                    else:
+                        if horizontal > 0:
+                            direction = "right"
+                        else:
+                            direction = "left"
+                else: # 하향
+                    if horizontal != 0:
+                        if horizontal > 0:
+                            direction = "right"
+                        else:
+                            direction = "left"
+                    else:
+                        if vertical < 0:
+                            direction = "down"
+                        else:
+                            direction = "up"
 
+            if (cur_p != dest_p) and d_id in detour_table[cur.id]:
+                    if horizontal > 0:
+                        direction = "right"
+                    else:
+                        direction = "left"
+                    # print("======detour=======")
 
-def selective_flood(detour_table, src_sat, src_orbit, fail_sat, fail_orbit, destination, sec_direction):
+            if (direction == "left" and cur.link_state[0] == 0) or (direction == "right" and cur.link_state[1] == 0):
+                # print("*******failure*******")
+                forever_inter = True
+                direction = "down" if initial_direction == "up" else "up"
+                flood_info, detour_table, overheads = selective_flood(detour_table, cur.link[direction], horizontal, src_p, d_id)
+                cur.fail_experiences[0 if direction == "left" else 1].append(flood_info)
+                fail_count += 1
+                overhead_signal += overheads
+
+            if direction == "up":
+                vertical -= 1
+            elif direction == "down":
+                vertical += 1
+            elif direction == "right":
+                horizontal -= 1
+            else:
+                horizontal += 1
+            cur = cur.link[direction]
+            if len(path) > 10000:
+                print("*******loop*******")
+                print(f'rest vertical / horizontal: {vertical} / {horizontal}')
+                print(f'on routing [{src.id} to {dest.id}]')
+                print(f'fail count: {fail_count}')
+                print(f'path:', '-'.join(sat.id for sat in path[-10:]))
+                break
+    except IndexError:
+        print("Index Error==============================")
+        print(f'rest vertical / horizontal: {vertical} / {horizontal}')
+        print(f'on routing [{src.id} to {dest.id}]')
+        print(f'rest vertical / horizontal: {vertical} / {horizontal}')
+        print(f'on routing [{src.id} to {dest.id}]')
+        print(f'src / dst: {src.id} / {dest.id}')
+        print(f'path:', '-'.join(sat.id for sat in path[-10:]))
+
+    return path, fail_count, overhead_signal, detour_table
+
+def selective_flood(detour_table, start_sat, horizontal, end_p, d_id):
     # 진행 경우, 1. inter-intra, 2. intra-inter, 3. intra-inter-intra
     # print(sec_direction)
+    overhead_count = 0
+    flood_dir = "left" if horizontal > 0 else "right"
     flood_path = []
-    d_id = destination.id
-    flood_direction = {"down": (-1, 0), "up": (1, 0), "right": (0, -1), "left": (0, 1)}
-    csat, corb = fail_sat, fail_orbit
-    dsat, dorb = flood_direction[sec_direction]
-    #
-    # detour_table[(csat, corb)].add(d_id)
-    # flood_path.append(mhr[csat][corb])
-    # while csat != src_sat and corb != src_orbit:
-    #     csat, corb = csat + dsat, corb + dorb
-    #     try:
-    #         mhr[csat][corb].detourTable.add(d_id)
-    #     except IndexError:
-    #         print(f'detour point: {fail_sat}, {fail_orbit} sec_direction: {sec_direction}')
-    #         print(f'index error: {csat}, {corb}')
-    #         print("===MHR===")
-    #         print(mhr)
-    #         for i in mhr:
-    #             for j in i:
-    #                 print(j.id, end=" ")
-    #             print()
-    #     flood_path.append(mhr[csat][corb])
+    cur = start_sat
+    while cur.p == end_p:
+        flood_path.append(cur.id)
+        cur = cur.link[flood_dir]
+    flood_path.append(cur.id)
 
-    # print("flood path: ", end="")
-    # for fsat in flood_path:
-    #     print(fsat.id, end=" ")
-    # print()
+    for sat_id in flood_path:
+        if d_id not in detour_table[sat_id]:
+            overhead_count += 1
+            detour_table[sat_id].add(d_id)
 
-    return [flood_path, destination.id]
+    return [flood_path, d_id], detour_table, overhead_count
 
 
 def recovery_flood(sat, index, detour_table):
@@ -320,10 +303,10 @@ def n_hop_flood(n, cur, d_id, detour_table):
 
 
 def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
-    src, dest = region[src_r][src_p], region[dest_r][dest_p]
-    r_num, p_num = len(region), len(region[0])
+    src, dest = region[src_p][src_r], region[dest_p][dest_r]
+    r_num, p_num = len(region[0]), len(region)
     ####### debugging print ########
-    print(src.id, "to", dest.id)
+    # print(src.id, "to", dest.id)
     d_id = dest.id
     flooding_hop = 2
     horizontal, vertical = minimum_hop_estimate(src, dest)
@@ -340,8 +323,8 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
             if cur.id == d_id:
                 break
             ####### debugging print ########
-            sleep(0.1)
-            print("=====", cur.id, "=====")
+            # sleep(0.1)
+            # print("=====", cur.id, "=====")
             if cur_p == dest_p:
                 if vertical < 0:
                     direction = "down"
@@ -385,10 +368,10 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
                     else:
                         direction = initial_direction
                         forever_inter = True
-                    print("======detour=======")
+                    # print("======detour=======")
 
             if (direction == "left" and cur.link_state[0] == 0) or (direction == "right" and cur.link_state[1] == 0):
-                print("*******failure*******")
+                # print("*******failure*******")
                 forever_inter = True
                 direction = initial_direction
                 flood_info, detour_table = n_hop_flood(flooding_hop, cur, d_id, detour_table)
@@ -404,8 +387,13 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
             else:
                 horizontal += 1
             cur = cur.link[direction]
-
-
+            if len(path) > 10000:
+                print("*******loop*******")
+                print(f'rest vertical / horizontal: {vertical} / {horizontal}')
+                print(f'on routing [{src.id} to {dest.id}]')
+                print(f'fail count: {fail_count}')
+                print(f'path:', '-'.join(sat.id for sat in path[-10:]))
+                break
     except IndexError:
         print("Index Error==============================")
         print(f'rest vertical / horizontal: {vertical} / {horizontal}')
@@ -413,19 +401,20 @@ def dtdr(region, detour_table, src_p, src_r, dest_p, dest_r):
         print(f'rest vertical / horizontal: {vertical} / {horizontal}')
         print(f'on routing [{src.id} to {dest.id}]')
         print(f'src / dst: {src.id} / {dest.id}')
-        print(f'path: {path}')
+        print(f'path:', '-'.join(sat.id for sat in path[-10:]))
+
 
     overhead_signal = 0
     for i in range(flooding_hop):
         overhead_signal += 3 ** i
     overhead_signal *= fail_count
-    print("done==============================")
-    print(f'rest vertical / horizontal: {vertical} / {horizontal}')
-    print(f'on routing [{src.id} to {dest.id}]')
-    print(f'hops: {len(path)}')
-    print(f'fail counts: {fail_count}')
-    print(f'path:', '-'.join(sat.id for sat in path))
-    print("=================================")
+    # print("done==============================")
+    # print(f'rest vertical / horizontal: {vertical} / {horizontal}')
+    # print(f'on routing [{src.id} to {dest.id}]')
+    # print(f'hops: {len(path)}')
+    # print(f'fail counts: {fail_count}')
+    # print(f'path:', '-'.join(sat.id for sat in path))
+    # print("=================================")
 
     # 경로 리턴 path <List<Satellite>>, fail_info => [에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>]
     return path, fail_count, overhead_signal, detour_table
@@ -447,19 +436,18 @@ def constellation_to_array(matrix):
     return rotated_matrix
 
 
-def is_available(sat, routing_table):
-    # check_orbit = src_p
-    # o_num = len(constellation)
-    # while True:
-    #     check_point = constellation[check_orbit][check_line]
-    #     # sleep(0.1)
-    #     # print(check_point.id, check_point.p, dst_p)
-    #     if check_point.id in routing_table:
-    #         return False
-    #     if check_point.p == dst_p:
-    #         break
-    #     check_orbit = (check_orbit + opt_orbit_direction + o_num) % o_num
-    return sat not in routing_table
+def available_hop(sat, routing_table, horizontal):
+    cur = sat
+    initial_r = cur.r
+    can_go = 0
+    direction = "left" if horizontal < 0 else "right"
+    while cur.id not in routing_table:
+        cur = cur.link[direction]
+        can_go += 1 if direction == "right" else -1
+        if can_go == horizontal:
+            break
+
+    return can_go
 
 
 def best_direction(start, end, sat_num):
@@ -479,7 +467,7 @@ def best_direction(start, end, sat_num):
         return 1
 
 
-def optimal_line(constellation, routing_table, src_r, src_p, dst_r, dst_p):
+def optimal_line(constellation, routing_table, src_r, src_p, dst_r, vertical, horizontal):
     opt_r = src_r
     r_range, p_range = len(constellation[0]), len(constellation)
     opt_lat = latitude_convert(constellation[src_p][opt_r].latitude)
@@ -498,103 +486,92 @@ def optimal_line(constellation, routing_table, src_r, src_p, dst_r, dst_p):
         temp_r += ds
         temp_r = r_range - 1 if temp_r < 0 else temp_r % r_range
     # 새로운 opt line 찾아야함
-    if not is_available(constellation[src_p][opt_r].id, routing_table):
-        return find_next_opt_line(routing_table, constellation[src_p][opt_r])
+    available_horizontal_hop = available_hop(constellation[src_p][opt_r], routing_table, horizontal)
+    if available_horizontal_hop == 0:
+        return find_next_opt_line(routing_table, constellation[src_p][opt_r], vertical, horizontal, 0)
 
-    return opt_r, opt_sat_direction
+    return opt_r, opt_sat_direction, available_horizontal_hop
 
+def adjacent_safe(sat, routing_table, n):
+    temp = sat
+    for _ in range(n):
+        temp = temp.link["right"]
+        if temp.id in routing_table:
+            return False
+    for _ in range(n):
+        temp = temp.link["left"]
+        if temp.id in routing_table:
+            return False
+    return True
 
-def find_next_opt_line(routing_table, cur):
+def find_next_opt_line(routing_table, cur, rest_vertical, horizontal, fail_count):
+    need_down = rest_vertical < 0
     up_count, down_count = 1, 1
     temp_sat = cur.link["up"]
-    while not is_available(temp_sat.id, routing_table):
+
+    while not adjacent_safe(temp_sat, routing_table, 2):
         up_count += 1
         temp_sat = temp_sat.link["up"]
     latitude_of_upper_sat = latitude_convert(temp_sat.latitude)
+    available_hop_if_up = available_hop(temp_sat, routing_table, horizontal)
     r_of_upper_sat = temp_sat.r
 
     temp_sat = cur.link["down"]
-    while not is_available(temp_sat.id, routing_table):
+    while not adjacent_safe(temp_sat, routing_table, 2):
         down_count += 1
         temp_sat = temp_sat.link["down"]
     latitude_of_lower_sat = latitude_convert(temp_sat.latitude)
+    available_hop_if_down = available_hop(temp_sat, routing_table, horizontal)
     r_of_lower_sat = temp_sat.r
 
-    if up_count == down_count:
+    # if fail_count > 7:
+    #     if need_down:
+    #         opt_r = r_of_lower_sat
+    #         direction = -1
+    #         available_horizon = available_hop_if_down
+    #     else:
+    #         opt_r = r_of_upper_sat
+    #         direction = 1
+    #         available_horizon = available_hop_if_up
+    # else:
+    if need_down:
+        up_waste_hop = 2*up_count
+        down_waste_hop = 2*abs(min(0, abs(rest_vertical) - down_count))
+    else:
+        up_waste_hop = 2*abs(min(0, abs(rest_vertical) - up_count))
+        down_waste_hop = 2*down_count
+
+    if up_waste_hop == down_waste_hop:
         if latitude_of_lower_sat > latitude_of_upper_sat:
             opt_r = r_of_lower_sat
             direction = -1
+            available_horizon = available_hop_if_down
         else:
             opt_r = r_of_upper_sat
             direction = 1
-    elif up_count > down_count:
+            available_horizon = available_hop_if_up
+    elif up_waste_hop < down_waste_hop:
         opt_r = r_of_upper_sat
         direction = 1
+        available_horizon = available_hop_if_up
     else:
         opt_r = r_of_lower_sat
         direction = -1
+        available_horizon = available_hop_if_down
 
-    return opt_r, direction
-
-
-# def ospf(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit):
-#     path = []
-#     fail_info = []
-#     opt_line, orbit_dir, sat_dir, count = optimal_line(constellation, routing_table, s_sat, s_orbit, dst_sat, dst_orbit)
-#     cur_s, cur_o = s_sat, s_orbit
-#     sat_num, orbit_num = len(constellation), len(constellation[0])
-#     print(f'src: {constellation[s_sat][s_orbit].id}, dst: {constellation[dst_sat][dst_orbit].id}')
-#     # print(f'in array src: {s_orbit}-{s_sat}, dst: {dst_orbit}-{dst_sat}')
-#     # print(f'orbit_dir: {orbit_dir}, sat_dir: {sat_dir}, opt_line: {opt_line}')
-#     re = False
-#
-#     while True:
-#         # sleep(0.2)
-#         if not re:
-#             # print(f'current sat: {constellation[cur_s][cur_o].id}')
-#             # print(f'=================current in array: {cur_o}-{cur_s}=====================')
-#             path.append(constellation[cur_s][cur_o])
-#         else:
-#             re = False
-#         if cur_s == dst_sat and cur_o == dst_orbit:
-#             break
-#             # intra-ISL
-#         if cur_s != opt_line or cur_o == dst_orbit:
-#             cur_s += sat_dir
-#             cur_s = sat_num - 1 if cur_s < 0 else cur_s % sat_num
-#             # inter-ISL
-#         elif cur_s == opt_line:
-#             # inter-ISL success
-#             if constellation[cur_s][cur_o].link_state[0 if orbit_dir == -1 else 1] == 1:
-#                 cur_o += orbit_dir
-#                 cur_o = orbit_num - 1 if cur_o < 0 else cur_o % orbit_num
-#                 if cur_o == dst_orbit:
-#                     sat_dir = best_direction(cur_s, dst_sat, sat_num)
-#             # inter-ISL fail
-#             else:
-#                 # print('fail')
-#                 routing_table.append(constellation[cur_s][cur_o].id)
-#                 fail_info = [constellation[cur_s][cur_o], constellation[cur_s]]
-#                 opt_line, orbit_dir, sat_dir, count = find_next_opt_line(constellation, routing_table, s_orbit, dst_sat,
-#                                                                          dst_orbit, opt_line, orbit_dir, sat_dir)
-#                 # print(f'new orbit_dir: {orbit_dir}, new sat_dir: {sat_dir}, new opt_line: {opt_line}')
-#                 re = True
-#                 continue
-#
-#     # 경로 리턴 path <List<Satellite>>, fail_info => [[에러 발생 위성<Satellite>, 원래 도착 지점<Satellite>][flooding path]]
-#     return path, fail_info, routing_table, 0
+    return opt_r, direction, available_horizon
 
 
 def opspf(constellation, routing_table, src_p, src_r, dst_p, dst_r):
     path = []
     fail_count = 0
-    opt_r, sat_dir = optimal_line(constellation, routing_table, src_r, src_p, dst_r, dst_p)
     src, dest = constellation[src_p][src_r], constellation[dst_p][dst_r]
+    horizontal, vertical = minimum_hop_estimate(src, dest)
+    opt_r, sat_dir, can_go = optimal_line(constellation, routing_table, src_r, src_p, dst_r, vertical, horizontal)
     d_id = dest.id
-    horizontal, vertical  = minimum_hop_estimate(src, dest)
     cur_r, cur_p = src_r, src_p
     cur = constellation[src_p][src_r]
-    first_direction = "inter" if cur_r == opt_r else "intra"
+    mode = "inter" if cur_r == opt_r else "intra"
 
     sat_num, orbit_num = len(constellation[0]), len(constellation)
     # print(f'+++++++++src: {constellation[src_p][src_r].id}, dst: {constellation[dst_p][dst_r].id}++++++++')
@@ -605,7 +582,7 @@ def opspf(constellation, routing_table, src_p, src_r, dst_p, dst_r):
         # sleep(0.2)
         path.append(cur)
         # print(f'===========cur : {cur.id}==========')
-        # print(f'===ver/hor : {vertical} / {horizontal} ==========')
+        # print(f'===ver/hor/can : {vertical} / {horizontal} / {can_go} ==========')
         if cur.id == d_id:
             break
             # intra-ISL
@@ -613,30 +590,30 @@ def opspf(constellation, routing_table, src_p, src_r, dst_p, dst_r):
             direction = "down" if vertical < 0 else "up"
             # inter-ISL
         else:
-            if first_direction == "intra":
+            if mode == "intra":
                 direction = "down" if sat_dir < 0 else "up"
             else:
-                if cur.id in routing_table:
-                    # print("======detour=======")
-                    opt_r, sat_dir = find_next_opt_line(routing_table, cur)
-                    direction = "down" if sat_dir < 0 else "up"
-                    first_direction = "intra"
+                # if can_go == 0:
+                #     # print("======find new line=======")
+                #     opt_r, sat_dir, can_go = find_next_opt_line(routing_table, cur, vertical, horizontal)
+                #     direction = "down" if sat_dir < 0 else "up"
+                #     mode = "intra"
+                # else:
+                # inter-ISL success
+                if cur.link_state[0 if horizontal < 0 else 1] == 1:
+                    direction = "left" if horizontal < 0 else "right"
+                # inter-ISL fail
                 else:
-                    # inter-ISL success
-                    if cur.link_state[0 if horizontal < 0 else 1] == 1:
-                        direction = "left" if horizontal < 0 else "right"
-                    # inter-ISL fail
-                    else:
-                        # print('fail')
-                        first_direction = "intra"
-                        routing_table.add(cur.id)
-                        # print(routing_table)
-                        fail_count += 1
-                        # print(f'before opt line: {opt_r}')
-                        opt_r, sat_dir = find_next_opt_line(routing_table, cur)
-                        # print(f'after opt line: {opt_r}')
-                        # print(f'new orbit_dir: {orbit_dir}, new sat_dir: {sat_dir}, new opt_line: {opt_line}')
-                        direction = "down" if sat_dir < 0 else "up"
+                    # print('fail')
+                    mode = "intra"
+                    routing_table.add(cur.id)
+                    # print(routing_table)
+                    fail_count += 1
+                    # print(f'before opt line: {opt_r}')
+                    opt_r, sat_dir, can_go = find_next_opt_line(routing_table, cur, vertical, horizontal, fail_count)
+                    # print(f'after opt line: {opt_r}')
+                    # print(f'new orbit_dir: {orbit_dir}, new sat_dir: {sat_dir}, new opt_line: {opt_line}')
+                    direction = "down" if sat_dir < 0 else "up"
 
         if direction == "up":
             vertical -= 1
@@ -644,13 +621,15 @@ def opspf(constellation, routing_table, src_p, src_r, dst_p, dst_r):
             vertical += 1
         elif direction == "right":
             horizontal -= 1
+            can_go -= 1
         else:
             horizontal += 1
+            can_go += 1
 
         cur = cur.link[direction]
         cur_p, cur_r = cur.p, cur.r
         if cur_r == opt_r:
-            first_direction = "inter"
+            mode = "inter"
 
     overhead_signal = fail_count * sat_num * orbit_num * 3
 

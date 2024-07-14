@@ -313,9 +313,9 @@ class Packet:
         global detour_table
         # 최적 위성 탐색
         # self.path, self.fail_info = dijkstra(minimum_hop_region, s_sat, s_orbit, dst_sat, dst_orbit)
-        # self.path, self.fail_info, self.overhead_signal = distributed_detour_routing(constellations[0], mhr, s_sat, s_orbit, dst_sat, dst_orbit, self.src, self.dst)
+        # self.path, self.fail_count, self.overhead_signal, detour_table = distributed_detour_routing(rtpg.graph, detour_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
         # self.path, self.fail_count, self.overhead_signal, detour_table = dtdr(rtpg.graph, detour_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
-        self.path, self.fail_info, routing_table, self.overhead_signal = opspf(rtpg.graph, routing_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
+        self.path, self.fail_count, routing_table, self.overhead_signal = opspf(rtpg.graph, routing_table, self.src.p, self.src.r, self.dst.p, self.dst.r)
 
 
 class Network:
@@ -858,7 +858,7 @@ while running == False:
         #         g.reset_connections()
         #         g.connect_satellites(constellations[0])
         if time % 100 == 0:
-            simulator.random_N_to_M_simulation(50)
+            simulator.random_N_to_M_simulation(100)
             # print(len(simulator.network.log))
         # if time % 40000 == 0:
         #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
