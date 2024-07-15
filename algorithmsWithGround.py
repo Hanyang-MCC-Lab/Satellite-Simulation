@@ -98,7 +98,7 @@ def detour_through_ground_opspf(cur, stations, dest_p, dest_r, routing_table, di
     g = nearest_ground_station(cur.get_ecef_info(), stations)
     next_sat = None
     min_p_diff, min_r_diff = 72, 22
-    for candidate in g.connections[0]:
+    for candidate in g.connections:
         p_diff, r_diff = diff(dest_p, candidate.p, 72), diff(dest_r, candidate.r, 22)
         if p_diff < min_p_diff and routing_table[candidate.id][0 if direction == "left" else 1] == 1:
             next_sat = candidate

@@ -7,7 +7,7 @@ def get_euc_distance(node_A, node_B):
     node_B_ecef = node_B.get_ecef_info()
     return math.dist(node_A_ecef, node_B_ecef)
 
-
+# hihi polar bear
 def get_grid(mhr):
     grid = []
     satnum = len(mhr)
