@@ -537,8 +537,8 @@ def opspf_with_ground(constellation, routing_table, src_id, dest_id):
         fail_sat_id = path[fail_index].id
         if fail_node.link["ground"]:
             parts = dest_id.split('-')
-            direction = directions[fail_index]
-            dest_orbit, dest_sat = parts[1], parts[2]
+            direction = -1 if directions[fail_index] == "left" else 1
+            dest_orbit, dest_sat = int(parts[1]), int(parts[2])
             available_stations = get_available_station(fail_node.longitude, fail_node.link["ground"], constellation[dest_orbit][dest_sat].longitude, direction, station_info)
             if len(available_stations) != 0:
                 station, next_node = detour_through_ground(fail_node, available_stations, constellation[dest_orbit][dest_sat].p, constellation[dest_orbit][dest_sat].r)
