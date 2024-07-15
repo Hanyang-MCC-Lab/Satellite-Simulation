@@ -77,8 +77,30 @@ def detour_through_ground(cur, stations, dest_p, dest_r):
     next_sat = g.connections[0]
     min_p_diff, min_r_diff = diff(dest_p, next_sat.p, 72), diff(dest_r, next_sat.r, 22)
     for candidate in g.connections[1:]:
+
         p_diff, r_diff = diff(dest_p, candidate.p, 72), diff(dest_r, candidate.r, 22)
         if p_diff < min_p_diff:
+            next_sat = candidate
+            min_p_diff, min_r_diff = p_diff, r_diff
+        elif p_diff == min_p_diff:
+            if r_diff < min_r_diff:
+                next_sat = candidate
+                min_p_diff, min_r_diff = p_diff, r_diff
+            else:
+                pass
+        else:
+            pass
+
+    return g, next_sat
+
+
+def detour_through_ground_opspf(cur, stations, dest_p, dest_r, routing_table, direction):
+    g = nearest_ground_station(cur.get_ecef_info(), stations)
+    next_sat = None
+    min_p_diff, min_r_diff = 72, 22
+    for candidate in g.connections[0]:
+        p_diff, r_diff = diff(dest_p, candidate.p, 72), diff(dest_r, candidate.r, 22)
+        if p_diff < min_p_diff and routing_table[candidate.id][0 if direction == "left" else 1] == 1:
             next_sat = candidate
             min_p_diff, min_r_diff = p_diff, r_diff
         elif p_diff == min_p_diff:
@@ -541,7 +563,7 @@ def opspf_with_ground(constellation, routing_table, src_id, dest_id):
             dest_orbit, dest_sat = int(parts[1]), int(parts[2])
             available_stations = get_available_station(fail_node.longitude, fail_node.link["ground"], constellation[dest_orbit][dest_sat].longitude, direction, station_info)
             if len(available_stations) != 0:
-                station, next_node = detour_through_ground(fail_node, available_stations, constellation[dest_orbit][dest_sat].p, constellation[dest_orbit][dest_sat].r)
+                station, next_node = detour_through_ground_opspf(fail_node, available_stations, constellation[dest_orbit][dest_sat].p, constellation[dest_orbit][dest_sat].r, routing_table, direction)
                 station_info.add(station)
                 path.append(station)
         # print("fail sat:", fail_sat_id)
