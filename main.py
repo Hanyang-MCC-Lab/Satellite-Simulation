@@ -341,9 +341,7 @@ class Packet:
             self.path, self.fail_count, self.overhead_signal, detour_table = dtdr_with_ground(rtpg.graph, detour_table, self.src.p,
                                                                                   self.src.r, self.dst.p, self.dst.r)
         elif ALGORITHM == "OPSPFwG":
-            self.path, self.fail_count, routing_table, self.overhead_signal = opspf_with_ground(constellation, routing_table,
-                                                                                    self.src.p, self.src.r, self.dst.p,
-                                                                                    self.dst.r)
+            self.path, self.fail_count, routing_table, self.overhead_signal = opspf_with_ground(constellation, routing_table, self.src.id, self.dst.id)
 
 
 class Network:
