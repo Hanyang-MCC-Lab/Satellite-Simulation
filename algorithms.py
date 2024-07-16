@@ -194,8 +194,9 @@ def distributed_detour_routing(region, detour_table, src_p, src_r, dest_p, dest_
             if (direction == "left" and cur.link_state[0] == 0) or (direction == "right" and cur.link_state[1] == 0):
                 # print("*******failure*******")
                 forever_inter = True
-                direction = "down" if initial_direction == "up" else "up"
-                flood_info, detour_table, overheads = selective_flood(detour_table, cur.link[direction], horizontal, src_p, d_id)
+                direction = initial_direction
+                f_direction = "down" if initial_direction == "up" else "up"
+                flood_info, detour_table, overheads = selective_flood(detour_table, cur.link[f_direction], horizontal, src_p, d_id)
                 cur.fail_experiences[0 if direction == "left" else 1].append(flood_info)
                 fail_count += 1
                 overhead_signal += overheads

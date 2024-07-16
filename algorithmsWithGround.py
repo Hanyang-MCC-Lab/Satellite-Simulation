@@ -237,8 +237,9 @@ def ddr_with_ground(region, detour_table, src_p, src_r, dest_p, dest_r):
 
             if (direction == "left" and cur.link_state[0] == 0) or (direction == "right" and cur.link_state[1] == 0):
                 # print("*******failure*******")
-                direction = "down" if initial_direction == "up" else "up"
-                flood_info, detour_table, overheads = selective_flood(detour_table, cur.link[direction], horizontal, src_p, d_id)
+                direction = initial_direction
+                f_direction = "down" if initial_direction == "up" else "up"
+                flood_info, detour_table, overheads = selective_flood(detour_table, cur.link[f_direction], horizontal, src_p, d_id)
                 if cur.link["ground"]:
                     # print("======ground=======")
                     available_stations = get_available_station(cur.longitude, cur.link["ground"], dest.longitude, horizontal, station_info)

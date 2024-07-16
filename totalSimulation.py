@@ -7,7 +7,7 @@ from util import set_routing_simulation_result
 TOLERABLE_ANGLE_PER_SECOND = [0.001, 0.001025, 0.00105, 0.001075, 0.0011, 0.001125, 0.00115, 0.001175, 0.0012, 0.001225, 0.00125]
 # TOLERABLE_ANGLE_PER_SECOND = [0.1]
 # ALGORITHMS = ["DTDR", "DDR", "OPSPF", "DTDRwG", "DDRwG", "OPSPFwG"]
-ALGORITHMS = ["OPSPFwG"]
+ALGORITHMS = ["DTDR", "DTDRwG"]
 
 def run_main_py(args):
     angle, algorithm = args
