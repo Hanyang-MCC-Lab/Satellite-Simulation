@@ -765,9 +765,9 @@ scene.resizable = False
 
 earth = sphere(pos=vec(0, 0, 0), radius=CONST_EARTH_RADIUS, texture=textures.earth)  # 지구생성
 #기지국
-for g_info in GROUND_GEO_INFO:
-    station = GroundStation(g_info)
-    ground_stations.append(station)
+# for g_info in GROUND_GEO_INFO:
+#     station = GroundStation(g_info)
+#     ground_stations.append(station)
 
 # for g in ground_stations:
 #     g.print_GS_info()
@@ -881,13 +881,13 @@ while running == False:
                 for sat in orbit.satellites:
                     sat.check_link_state()
         # 기지국
-        if time % 600 == 0:
-            rtpg.refresh_rtpg()
-            for g in ground_stations:
-                g.reset_connections()
-                g.connect_satellites(constellations[0])
-        if time % 100 == 0:
-            simulator.random_N_to_M_simulation(50)
+        # if time % 600 == 0:
+        #     rtpg.refresh_rtpg()
+        #     for g in ground_stations:
+        #         g.reset_connections()
+        #         g.connect_satellites(constellations[0])
+        # if time % 100 == 0:
+        #     simulator.random_N_to_M_simulation(50)
             # print(len(simulator.network.log))
         # if time % 40000 == 0:
         #     write_routing_simulation_result_partition(simulator.network.log, TOLERABLE_ANGLE_PER_SECOND, time/40000)
